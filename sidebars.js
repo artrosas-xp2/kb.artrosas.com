@@ -25,18 +25,26 @@ const sidebars = {
         'reference/provisioning-gaps',
       ],
     },
- {
+        {
       type: 'category',
       label: 'Tools',
       collapsed: false,
       items: [
-        {
-          type: 'html',
-          value: '<a class="menu__link" href="/hotp-tester.html">HOTP Tester</a>',
-          defaultStyle: true,
-        },
+        'tools/hotp-tester',
       ],
     },
+//  {
+//       type: 'category',
+//       label: 'Tools',
+//       collapsed: false,
+//       items: [
+//         {
+//           type: 'html',
+//           value: '<a class="menu__link" href="/hotp-tester.html">HOTP Tester</a>',
+//           defaultStyle: true,
+//         },
+//       ],
+//     },
   ],
 };
 
