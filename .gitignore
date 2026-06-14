@@ -21,3 +21,5 @@ yarn-error.log*
 
 # Backup files
 *.bak
+
+.claude/

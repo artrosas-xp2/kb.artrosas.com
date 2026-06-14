@@ -31,6 +31,14 @@ const sidebars = {
       collapsed: false,
       items: [
         'tools/hotp-tester',
+        {
+          type: 'category',
+          label: 'PowerShell Scripts',
+          items: [
+            'tools/powershell-scripts/get-token-info',
+            'tools/powershell-scripts/re-provision-a-key',
+          ],
+        },
       ],
     },
 //  {

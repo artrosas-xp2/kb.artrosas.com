@@ -1,0 +1,211 @@
+---
+title: Quick re-seed (HOTP)
+sidebar_position: 2
+---
+
+# Quick Re-Seed (HOTP)
+
+Generates a fresh secret, a randomized starting counter, and a per-user
+friendly name for an OATH **HOTP** slot, then writes a headerless seed
+row (`SN,Secret,EventCounter`) for import into the validation server.
+
+:::danger Read this before running
+This **invalidates the existing seed** on the slot. Every code the
+credential previously produced stops working the instant the token is
+re-programmed. The user **cannot authenticate** until the new seed CSV
+has been imported into the validation server. Coordinate the two, and
+follow the ordering in the
+[re-seeding process runbook](../../runbooks/re-seeding-process) — that doc
+is the authority on sequencing; this page is just the tooling.
+:::
+
+:::danger The CSV contains the live secret
+`SN,Secret,EventCounter` includes the **raw HMAC seed in plaintext**.
+Anyone who reads that file can mint valid OTPs. Per your own
+[provisioning-gaps doc](../../reference/provisioning-gaps), seeds must live
+in a vault — **not a spreadsheet, not email, not the git repo**.
+Transmit it to the server over a secure channel, import it, then
+securely delete it (see *Cleanup* below). Confirm `C:\Temp\Crescendo\`
+is in `.gitignore` so a seed never gets committed.
+:::
+
+## Prerequisites
+
+- The Crescendo key is inserted.
+- You're in the directory containing `CrescendoCLI.exe` (or
+  `$env:CRESCENDO_CLI_PATH` is set).
+- You know the token PIN / XAUTH key — programming a slot requires
+  authentication per its `PersonalizationACR`
+  (`SecureChannelOrPINOrXAUTH1`). This is **token** auth, not Windows
+  admin; no OS elevation is needed for these CCID operations.
+
+## How to use
+
+1. Paste the script into the PowerShell session.
+2. When prompted, enter the **User's ID** (e.g. `N123456`). This becomes
+   the friendly-name prefix.
+3. The CLI will prompt securely for the PIN during programming
+   (`-p INTERACTIVE`).
+4. Read the summary, import the seed CSV, verify with the user, then
+   delete the CSV.
+
+## What gets generated
+
+| Value | How it's produced | Notes |
+|---|---|---|
+| **Secret** | 25 random bytes (50 hex) from a CSPRNG | See length caveat below |
+| **EventCounter** | Random 6-digit integer | See counter caveat below |
+| **FriendlyName** | `<UserID>-<yyyyMM>h<HH>m<mm>` | Day omitted by design |
+| **SN** | `token-cuid` | Hardware ID, used as the seed key |
+
+:::caution Counter ≠ 0 (differs from the re-seed runbook default)
+The [re-seeding runbook](../../runbooks/re-seeding-process) and
+[Gap 3](../../reference/provisioning-gaps) both default to **resetting the
+counter to zero** and aligning both sides. This script instead writes a
+**random 6-digit** starting counter, as requested. That's only safe
+because the **same value goes to the server via the CSV** — the
+`EventCounter` column *is* the alignment mechanism. A random high start
+was also a prime suspect in the original drift case, so make this a
+conscious convention, not an accident. To revert to the documented
+behavior, set `$CounterMin = 0; $CounterMax = 0`.
+:::
+
+:::caution Secret length: 25 bytes vs observed 20
+The sample keys are 25 bytes (50 hex), so that's the default. But the
+live token reported `KeyLengthInBytes: 20`, and the re-seed runbook
+cites 160 bits (20 bytes) for SHA-1. 25 bytes is cryptographically fine
+(200 bits, above the RFC 4226 recommendation), but the slot may reject
+or truncate a non-20-byte key. Verify the slot accepts 25 bytes, or set
+`$SecretByteLength = 20`.
+:::
+
+## The script
+
+```powershell
+# HID-Reprovision-Token.ps1
+# Re-seeds an OATH HOTP slot and emits a headerless seed CSV (SN,Secret,EventCounter).
+# READ THE RUNBOOK FIRST. This invalidates the existing seed.
+
+$ErrorActionPreference = 'Stop'
+
+# ---- Tunables ----
+$SecretByteLength = 25          # 25 bytes = 50 hex. Observed slot was 20; verify or set to 20.
+$CounterMin       = 100000      # >= 6 digits. Set both to 0 to follow the "reset to zero" default.
+$CounterMax       = 999999
+$SeedDir          = 'C:\Temp\Crescendo\seeds'
+
+# ---- Locate the CLI ----
+$cliPath = if ($env:CRESCENDO_CLI_PATH)         { $env:CRESCENDO_CLI_PATH }
+           elseif (Test-Path .\CrescendoCLI.exe) { (Resolve-Path .\CrescendoCLI.exe).Path }
+           else { $null }
+if (-not $cliPath) {
+    Write-Host "ERROR: CrescendoCLI.exe not found. cd into the CLI Tool directory or set `$env:CRESCENDO_CLI_PATH." -ForegroundColor Red
+    exit 1
+}
+
+# ---- The one input the agent provides ----
+$userId = (Read-Host "Enter the User's ID (e.g. N123456)").Trim()
+if (-not $userId) { throw "User's ID is required." }
+
+# ---- Token serial (CUID) ----
+$cuid = (& $cliPath token-cuid 2>$null | Out-String).Trim()
+if (-not $cuid) { throw "Could not read token CUID. Is a key inserted?" }
+
+# ---- Find the existing HOTP slot to re-seed ----
+$applets = (& $cliPath otp-props-get 2>$null | Out-String) | ConvertFrom-Json
+$slotRef = $null; $aid = $null
+foreach ($applet in $applets) {
+    foreach ($obj in $applet.ListOfOATHObjects) {
+        if ($obj.OATHMode -eq 'HOTP') { $slotRef = $obj.OATHObjectKeyReferenceValue; $aid = $applet.AID; break }
+    }
+    if ($slotRef) { break }
+}
+if (-not $slotRef) { throw "No HOTP slot found to re-seed. Check otp-props-get." }
+
+# ---- Generate the new secret (CRYPTOGRAPHICALLY SECURE) ----
+# Do NOT use Get-Random for a secret: it is a non-crypto PRNG. RandomNumberGenerator
+# is the correct source, and matches the re-seed runbook's "CSPRNG" requirement.
+$rng   = [System.Security.Cryptography.RandomNumberGenerator]::Create()
+$bytes = [byte[]]::new($SecretByteLength)
+$rng.GetBytes($bytes)
+$rng.Dispose()
+$secret = -join ($bytes | ForEach-Object { $_.ToString('x2') })
+
+# ---- Starting counter ----
+# Get-Random is acceptable HERE ONLY because the counter is not a secret.
+# Never use it for the seed above.
+$counter = Get-Random -Minimum $CounterMin -Maximum ($CounterMax + 1)
+
+# Optional: decimal -> 8-byte big-endian dashed hex (the form the token reports),
+# in case otp-slot-configure wants that format. Verify with --help.
+$counterHex16  = '{0:X16}' -f [int64]$counter
+$counterDashed = (for ($i = 0; $i -lt 16; $i += 2) { $counterHex16.Substring($i, 2) }) -join '-'
+
+# ---- Friendly name: <UserID>-<yyyyMM>h<HH>m<mm>  (day omitted) ----
+$fnStamp      = Get-Date -Format "yyyyMM\hHH\mmm"
+$friendlyName = "$userId-$fnStamp"
+
+# ============================================================================
+# PROGRAM THE TOKEN  --  FLAGS BELOW ARE ILLUSTRATIVE / UNVERIFIED
+# Run `.\CrescendoCLI.exe otp-slot-configure --help` and correct the flag names
+# and argument formats (esp. how --counter and --key want their values) before
+# trusting this. -p INTERACTIVE makes the CLI prompt securely for the PIN.
+# ============================================================================
+& $cliPath otp-slot-configure `
+    --slot $slotRef `
+    --mode HOTP `
+    --hash SHA1 `
+    --digits 6 `
+    --counter $counter `
+    --key $secret `
+    --friendly-name $friendlyName `
+    -p INTERACTIVE
+if ($LASTEXITCODE -ne 0) { throw "otp-slot-configure failed (exit $LASTEXITCODE). Token NOT re-seeded; re-read with the info script before assuming state." }
+
+# ---- Persist the seed CSV IMMEDIATELY (the secret is now on the token) ----
+# Headerless, one row: SN,Secret,EventCounter. ASCII = no BOM, importer-friendly.
+if (-not (Test-Path $SeedDir)) { New-Item -ItemType Directory -Path $SeedDir -Force | Out-Null }
+$csvStamp = Get-Date -Format 'yyyyMMdd_HHmmss'
+$csvPath  = Join-Path $SeedDir "crescendo-seed-$cuid-$csvStamp.csv"
+Set-Content -Path $csvPath -Value "$cuid,$secret,$counter" -Encoding ascii
+
+# ---- Best-effort verification (non-fatal; CSV is already saved) ----
+$verify = ''
+try { $verify = (& $cliPath otp-generate --slot $slotRef -p INTERACTIVE 2>$null | Out-String).Trim() } catch { $verify = '' }
+
+# ---- Terminal summary (secret masked; full value only in the CSV) ----
+$mask = if ($secret.Length -ge 8) { $secret.Substring(0,4) + ('*' * ($secret.Length - 8)) + $secret.Substring($secret.Length - 4) } else { '****' }
+Write-Host ""
+Write-Host "Re-seed complete" -ForegroundColor Green
+Write-Host "SN (CUID)    = $cuid"
+Write-Host "FriendlyName = $friendlyName"
+Write-Host "Slot / AID   = $slotRef / $aid"
+Write-Host "Secret       = $mask   (full value in CSV only)"
+Write-Host "EventCounter = $counter   (hex: $counterDashed)"
+if ($verify) { Write-Host "Verify OTP   = $verify   (seed wrote OK)" }
+Write-Host ""
+Write-Host "Seed CSV     = $csvPath" -ForegroundColor Cyan
+Write-Host "Import to the validation server, confirm with the user, then DELETE the CSV." -ForegroundColor Yellow
+```
+
+## Verify, then clean up
+
+1. Import the seed CSV into the validation server (counter = the
+   `EventCounter` value, **not** zero — they must match).
+2. Have the user authenticate **twice** on fresh taps. Both must
+   succeed; if only the first does, the counter didn't advance on one
+   side — investigate before closing (per the re-seed runbook).
+3. Securely delete the seed once imported:
+```powershell
+   Remove-Item C:\Temp\Crescendo\seeds\* -Force
+```
+4. Invalidate the old seed anywhere it was staged or backed up — a
+   surviving old seed is a shadow credential.
+
+## Friendly-name length
+
+`N123456-202605h13m26` is 20 characters. The max FriendlyName length for
+this CLI isn't documented in the KB — confirm the slot accepts it before
+relying on the format at scale. The day was intentionally dropped to
+keep it short; if you need re-seeds distinguishable within a month,
+you'll want the day or a short random suffix back in.

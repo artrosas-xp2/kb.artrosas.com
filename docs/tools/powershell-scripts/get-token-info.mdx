@@ -1,0 +1,146 @@
+---
+title: Get Token Info
+sidebar_position: 1
+---
+
+# Get Token Info
+
+A read-only PowerShell script that pulls the **token CUID** and **HOTP counter** from
+a Crescendo key, and outputs a timestamped record to
+`C:\Temp\Crescendo\`.
+
+Use this when:
+* Triaging a suspected counter drift.
+* Confirming the key the user has plugged in.
+* Building a reproducible log of reads during a help-desk
+session.
+
+## How to use
+
+1. Plug the HID Crescendo key into the workstation.
+2. Open **PowerShell** (no admin required — these are read-only operations).
+3. `cd` into the directory containing `CrescendoCLI.exe`. For example:
+```powershell
+   cd "C:\Path\To\Crescendo_SDK_2.0.3_windows\CLI Tool"
+```
+   :::tip Why this step matters
+   The script looks for `CrescendoCLI.exe` in the current directory. If you skip
+   the `cd`, you'll get a "CrescendoCLI.exe not found" error. (Alternative: set
+   `$env:CRESCENDO_CLI_PATH` to the full path of the exe.)
+   :::
+4. Copy the script below and paste it into the PowerShell session.
+
+## What you'll see
+
+**Terminal output:**
+
+```text
+[2026-05-31 13:28:44]
+CUID       = 4790D600212432385421
+Counter    = 205
+RawCounter = 00-00-00-00-00-00-00-CD
+Slot       = OATH HOTP
+AID        = A0-00-00-00-79-23-00
+
+Logged to: C:\Temp\Crescendo\crescendo-readout-20260531h13m28.txt
+```
+
+**Log file** — same content, appended to `C:\Temp\Crescendo\crescendo-readout-YYYYMMDDhHHmMM.txt`.
+A new file is created each minute, so running the script several times within
+the same minute appends to one file; running across minute boundaries gives
+you separate files.
+
+## How to read the output
+
+| Field | What it means |
+|---|---|
+| `CUID` | Serial Number. Card Unique ID — it's the hardware identifier of the chip. Stable across reprovisioning. |
+| `Counter` | HOTP moving factor as a decimal integer. The 'Event Counter' (RFC 4226 big-endian decode). |
+| `RawCounter` | The 8-byte counter as returned by the CLI, hex with dash separators. |
+| `Slot` | FriendlyName of the OATH slot. Factory default is `OATH HOTP`. |
+| `AID` | Applet ID of the HOTP applet on the card. |
+
+If `Counter` is unexpectedly large (billions) on a key that's only been pressed
+a few times, see [hotp-counter-drift](../../runbooks/hotp-counter-drift) — Factory tokens have been provisioned with a non-zero starting counter.
+
+## The script
+
+```powershell
+# HID-Get-Token-Info.ps1
+$ErrorActionPreference = 'Stop'
+
+# ---- Locate the CLI ----
+$cliPath = if ($env:CRESCENDO_CLI_PATH)         { $env:CRESCENDO_CLI_PATH }
+           elseif (Test-Path .\CrescendoCLI.exe) { (Resolve-Path .\CrescendoCLI.exe).Path }
+           else { $null }
+
+if (-not $cliPath) {
+    Write-Host "ERROR: CrescendoCLI.exe not found. cd into the CLI Tool directory or set `$env:CRESCENDO_CLI_PATH." -ForegroundColor Red
+    exit 1
+}
+
+# ---- Output location ----
+$outDir = 'C:\Temp\Crescendo'
+if (-not (Test-Path $outDir)) {
+    New-Item -ItemType Directory -Path $outDir -Force | Out-Null
+}
+
+$tsLabel = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+$tsFile  = Get-Date -Format "yyyyMMdd\hHH\mmm"
+$outPath = Join-Path $outDir "crescendo-readout-$tsFile.txt"
+
+# ---- Token CUID ----
+$cuid = (& $cliPath token-cuid 2>$null | Out-String).Trim()
+if (-not $cuid) { $cuid = '<not-found>' }
+
+# ---- HOTP counter ----
+$raw     = & $cliPath otp-props-get 2>$null | Out-String
+$applets = $raw | ConvertFrom-Json
+
+$hotp = $null; $hotpAid = $null
+foreach ($applet in $applets) {
+    foreach ($obj in $applet.ListOfOATHObjects) {
+        if ($obj.OATHMode -eq 'HOTP') { $hotp = $obj; $hotpAid = $applet.AID; break }
+    }
+    if ($hotp) { break }
+}
+if (-not $hotp) { throw "No HOTP slot found on this key." }
+
+$counter = [Convert]::ToUInt64(($hotp.CounterValue -replace '-',''), 16)
+
+# ---- Multi-line block (used for both terminal and log) ----
+$logBlock = @"
+[$tsLabel]
+CUID       = $cuid
+Counter    = $counter
+RawCounter = $($hotp.CounterValue)
+Slot       = $($hotp.FriendlyName)
+AID        = $hotpAid
+
+"@
+Add-Content -Path $outPath -Value $logBlock -Encoding UTF8
+
+# ---- Multi-line terminal display ----
+Write-Host ""
+Write-Host "[$tsLabel]" -ForegroundColor DarkGray
+Write-Host "CUID       = $cuid"                  -ForegroundColor Green
+Write-Host "Counter    = $counter"               -ForegroundColor Green
+Write-Host "RawCounter = $($hotp.CounterValue)"  -ForegroundColor Green
+Write-Host "Slot       = $($hotp.FriendlyName)"  -ForegroundColor Green
+Write-Host "AID        = $hotpAid"               -ForegroundColor Green
+Write-Host ""
+Write-Host "Logged to: $outPath" -ForegroundColor Cyan
+```
+
+## Troubleshooting
+
+**"running scripts is disabled on this system"** — the agent tried to save the
+script as a `.ps1` and execute it. This page is designed for copy/paste into an
+interactive session, which bypasses execution policy. If you need to run it as
+a file, see Microsoft's [execution policy docs](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies).
+
+**"CrescendoCLI.exe not found"** — you're not in the CLI Tool directory. `cd`
+to wherever `CrescendoCLI.exe` lives and re-paste.
+
+**"No HOTP slot found on this key"** — the key doesn't have an HOTP slot
+configured. Instructions to *Re-Provision a Key* are coming soon. 
