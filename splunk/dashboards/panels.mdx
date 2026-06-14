@@ -1,0 +1,61 @@
+---
+sidebar_position: 2
+title: Panels & visualizations
+description: What a panel is, how it's wired to a search, and the common visualization types.
+---
+
+# Panels & visualizations
+
+A **panel** is a single tile on a dashboard. Each panel contains modules —
+a search box, fields, and a data visualization — and is usually connected
+to a search that supplies its data.
+
+## How a panel gets its data
+
+A panel's search can come from a few places:
+
+| Backing search | When to use |
+|----------------|-------------|
+| **Inline search** | Quick one-off panels; the SPL lives in the panel. |
+| **Saved report** | Reuse one [saved search](/splunk/dashboards/reports-and-alerts) across panels/dashboards. |
+| **Base + post-process** | Many panels share one [base search](/splunk/dashboards/performance) and slice it differently. |
+
+Whatever the source, the panel runs SPL and renders the result — so the
+[search pipeline](/splunk/notes/structured-query) is what shapes it.
+A panel that shows "errors per host" is just:
+
+```spl
+index=web status>=500 | stats count by host
+```
+
+…with a visualization wrapped around it.
+
+## Choosing a visualization
+
+The shape of your search results determines which visualizations make
+sense:
+
+| Result shape | Good visualizations |
+|--------------|--------------------|
+| A single number (`stats count`) | **Single value**, gauge |
+| Values by one field (`stats count by host`) | **Bar / column**, pie, table |
+| A series over time ([`timechart`](/splunk/report/chart-timechart)) | **Line / area** chart |
+| Two dimensions (`chart … over X by Y`) | Stacked column, heatmap |
+| Geographic fields | **Choropleth / cluster map** |
+
+:::tip Shape the data for the chart you want
+A line chart needs a `timechart`; a bar chart needs a `stats … by`. If a
+visualization looks wrong, the fix is usually the
+[report stage](/splunk/report) of the panel's search, not the chart
+settings.
+:::
+
+## Completed vs. real-time panels
+
+Panels can display the results of **completed** searches (the common
+case — run on a schedule or on load) or **real-time** searches that
+update continuously. Real-time panels are powerful but expensive; prefer
+scheduled/completed searches unless you genuinely need live data.
+
+Next: [inputs & tokens](/splunk/dashboards/inputs-and-tokens) — make the
+panels interactive.

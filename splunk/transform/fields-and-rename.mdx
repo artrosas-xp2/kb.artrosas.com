@@ -1,0 +1,73 @@
+---
+sidebar_position: 5
+title: fields & rename
+description: Keep the columns you need, drop the noise, and give fields readable names.
+---
+
+# `fields` & `rename` — shape the field set
+
+After extracting and computing, tidy the columns before you report or
+display. `fields` controls **which** columns survive; `rename` controls
+what they're **called**.
+
+## fields — keep or drop columns
+
+`fields` removes fields from the result set. Use `+` to keep only the
+named fields, `-` to remove them:
+
+```spl
+... | fields + host, ip          ← keep ONLY host and ip, in that order
+... | fields - _raw, punct       ← drop these noisy fields, keep the rest
+```
+
+:::tip Two reasons to use fields
+1. **Tidiness** — a result table with only the columns you care about.
+2. **Speed** — dropping a big field like `_raw` early means every later
+   command carries less data. (That's why `fields -` can double as a
+   [filter-stage optimization](/splunk/filters/dedup-head).)
+:::
+
+## rename — readable field names
+
+`rename` changes a field's name — useful for cleaning up extracted or
+internal fields before they hit a report or dashboard:
+
+```spl
+... | rename _ip AS IPAddress
+... | rename count AS "Event Count"        ← quote names with spaces
+```
+
+Wildcards rename many fields at once by pattern:
+
+```spl
+... | rename *_secs AS *_seconds           ← rt_secs → rt_seconds, etc.
+```
+
+## table — the display cousin
+
+When the goal is a final tabular layout, `table` keeps the named fields
+**in order** (similar to `fields +`, and typically used right before
+display):
+
+```spl
+... | table _time, host, status, uri_path
+```
+
+`fields +` and `table` overlap; the rule of thumb: use `fields` while
+shaping data mid-pipeline, use `table` to define the final columns for
+output.
+
+## Putting the transform stage together
+
+```spl
+index=web sourcetype=access_combined earliest=-1h    ← filter
+| rex field=_raw "user=(?<user>\w+)"                 ← extract
+| eval is_error = if(status>=500, "yes", "no")       ← compute
+| lookup usertogroup user OUTPUT group               ← enrich
+| rename user AS username                             ← tidy names
+| fields + _time, username, group, status, is_error  ← keep what matters
+```
+
+That clean, field-rich table is exactly what the
+[report stage](/splunk/report)
+wants next.

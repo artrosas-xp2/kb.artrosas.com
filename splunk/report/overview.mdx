@@ -1,0 +1,64 @@
+---
+slug: /report
+sidebar_position: 1
+title: Report
+description: Stage three of a Splunk search — collapse filtered, transformed events into statistics, tables, and time series.
+---
+
+# Report
+
+Reporting is **stage three** of [building a search](/splunk/notes/structured-query).
+The [filter](/splunk/filters) and [transform](/splunk/transform) stages
+left you with a small, clean, field-rich table of events. Now you
+**aggregate** it — turn thousands of rows into the handful of numbers,
+tables, or time series that actually answer the question.
+
+:::tip Reporting collapses rows
+Filtering removes rows and transforming adds columns; reporting does
+something different — it **collapses many rows into summary rows**. A
+million events become "count by host" — twelve rows. This is almost
+always the command that produces what you put on a dashboard.
+:::
+
+## The mental model
+
+Where a transforming command runs once per event and hands the table
+along largely intact, a reporting command **consumes** the event table
+and emits a brand-new, much smaller results table grouped by whatever you
+specify with `by`.
+
+```spl
+index=web sourcetype=access_combined earliest=-24h status>=500   ← filter
+| rex field=_raw "user=(?<username>\w+)"                         ← transform
+| stats count by username                                        ← REPORT: collapse
+```
+
+## The reporting commands
+
+### [stats — the aggregation workhorse →](/splunk/report/stats)
+Compute statistics (`count`, `sum`, `avg`, `dc`, `perc…`) over your
+events, optionally grouped `by` fields. The command you'll use most.
+
+### [chart & timechart — visual aggregation →](/splunk/report/chart-timechart)
+`stats` shaped for visualization: `chart` pivots over a field of your
+choice; `timechart` always buckets over `_time` for trend lines.
+
+### [top & rare — quick distributions →](/splunk/report/top-rare)
+One-command shortcuts for "what are the most (or least) common values of
+this field," complete with counts and percentages.
+
+### [transaction — group related events →](/splunk/report/transaction)
+Stitch multiple events into a single logical unit — a user session, a
+multi-step workflow — spanning a duration of time.
+
+### [Advanced reporting →](/splunk/report/advanced)
+`eventstats` and `streamstats` (aggregate without collapsing),
+`trendline`, `predict`, and `anomalydetection`.
+
+## Where this sits in the pipeline
+
+Reporting comes **after** filtering and transforming, and **before** the
+final [format stage](/splunk/format)
+that sorts and presents the summarized results.
+
+Next: start with [stats](/splunk/report/stats).

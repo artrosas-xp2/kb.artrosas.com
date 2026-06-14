@@ -1,0 +1,90 @@
+---
+sidebar_position: 4
+title: Keywords & booleans
+description: Free-text terms, quoted phrases, AND/OR/NOT, wildcards, and field comparison expressions in the search command.
+---
+
+# Keywords & booleans
+
+This is the matching logic of the implied `search` command at the front
+of the pipeline. Search requests are written with keywords, quoted
+phrases, boolean expressions, wildcards, field name/value pairs, and
+comparison expressions.
+
+## Keywords and phrases
+
+Bare words are matched as terms. Multiple terms are `AND`-ed together
+automatically:
+
+```spl
+index=web error timeout        ← events containing BOTH "error" AND "timeout"
+```
+
+Wrap multi-word phrases in quotes to match them exactly:
+
+```spl
+"connection refused"
+"GET /trade/app?action=logout"
+```
+
+## Boolean operators
+
+`AND` is implied between terms; `OR` and `NOT` must be explicit. Operators
+are uppercase. Use parentheses to group:
+
+```spl
+index=web error OR warning
+index=web error NOT timeout
+index=web (error OR fatal) NOT debug
+```
+
+## Wildcards
+
+`*` matches any number of characters:
+
+```spl
+index=web status=4*           ← 400, 404, 418, ...
+index=web fail*               ← fail, failed, failure
+```
+
+:::caution Wildcards aren't free
+Leading wildcards (`*error`) and broad wildcards force Splunk to scan far
+more data. Prefer specific terms — see the specificity tip below.
+:::
+
+## Field name/value pairs
+
+Match on extracted fields directly:
+
+```spl
+index=web status=404 method=GET clientip=10.0.0.5
+```
+
+## Comparison expressions
+
+For numeric and lexicographic comparisons, use the operators
+`=  !=  <  >  <=  >=`:
+
+```spl
+index=web status>=500          ← server errors
+index=web bytes>1000000        ← responses over ~1 MB
+index=web status!=200          ← anything that wasn't a clean 200
+```
+
+This is still part of the base `search` — it filters rows as data comes
+off disk. (For comparisons between *two fields*, or on *computed* values,
+you need [`where`](/splunk/filters/where-command) instead.)
+
+## Be as specific as you can
+
+Splunk's optimization guidance calls this out directly:
+
+> Search as specifically as you can. For example, `fatal_error` not
+> `*error*`.
+
+A precise term lets Splunk use its index efficiently; a broad wildcard
+makes it read and scan far more. Every term you add here shrinks the
+dataset before any `|` command runs.
+
+Next: [the `where` command](/splunk/filters/where-command) for filters
+the base search can't express.

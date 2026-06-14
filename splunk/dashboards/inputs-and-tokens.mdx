@@ -1,0 +1,65 @@
+---
+sidebar_position: 3
+title: Inputs & tokens
+description: Make a dashboard interactive — time pickers and dropdowns that drive the panel searches.
+---
+
+# Inputs & tokens
+
+Inputs are the interactive controls on a dashboard — a time picker, a
+dropdown, a text box. They make a dashboard reusable: one layout that
+answers the question for *any* host, *any* time range, instead of a fixed
+report.
+
+## How interactivity works
+
+The mechanism is **tokens**. An input stores the user's choice in a named
+token, and panel searches reference that token. Change the input → the
+token changes → the panels re-run.
+
+```
+[ Input: status dropdown ]  →  sets token `status`
+        ↓
+panel search:  index=web status=$status$ | stats count by host
+```
+
+When the user picks `500` from the dropdown, `$status$` becomes `500` and
+every panel using it re-runs scoped to server errors.
+
+## Common input types
+
+| Input | Drives |
+|-------|--------|
+| **Time** | The search time range — sets the `earliest` / `latest` of panels. |
+| **Dropdown** | A token from a fixed list, or from the results of a search. |
+| **Text** | A free-form token (e.g. a hostname to filter on). |
+| **Radio / checkbox** | A token from a small set of choices. |
+| **Multiselect** | A token holding several values at once. |
+
+## The time input is special
+
+The time picker ties directly into the most powerful filter you have —
+[time modifiers](/splunk/filters/time-modifiers). Instead of hardcoding
+`earliest=-24h` in a panel, let the time input supply it, so one
+dashboard works for "last 15 minutes" or "last 7 days" without edits.
+
+## Dynamic dropdowns
+
+A dropdown's choices can come from a search, so the options stay current.
+For example, populate a "host" dropdown from whatever hosts actually have
+data:
+
+```spl
+index=web | stats count by host | sort -count | fields host
+```
+
+Each row's `host` becomes a selectable option.
+
+:::caution Sanitize tokens used in searches
+A token dropped straight into SPL is still part of a search. Constrain
+dropdowns to known values, and be deliberate about free-text inputs that
+feed a search.
+:::
+
+Next: [reports & alerts](/splunk/dashboards/reports-and-alerts) — the
+saved searches behind the panels.

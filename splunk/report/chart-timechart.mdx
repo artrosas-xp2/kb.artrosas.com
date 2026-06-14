@@ -1,0 +1,61 @@
+---
+sidebar_position: 3
+title: chart & timechart
+description: stats shaped for visualization — pivot over a field, or bucket over time for trend lines.
+---
+
+# `chart` & `timechart`
+
+Both return results in tabular output ready for charting. They're `stats`
+with a built-in sense of axes — the difference is *what goes on the
+x-axis*.
+
+| Command | X-axis | Use for |
+|---------|--------|---------|
+| `chart` | a field **you choose** (`over`) | bar/column comparisons across categories |
+| `timechart` | always `_time` | trends and time series |
+
+## timechart — over time
+
+`timechart` buckets results into time spans on the x-axis. Use `span` to
+set the bucket size and `by` to split into one series per value:
+
+```spl
+... | timechart count by host                 ← event count over time, per host
+... | timechart span=1m avg(CPU) by host       ← avg CPU each minute, per host
+... | timechart span=1h sum(bytes)             ← hourly byte volume
+```
+
+`span` accepts the usual units — `span=30s`, `span=5m`, `span=1h`,
+`span=1d`.
+
+:::tip Watch the series count
+`timechart … by <field>` creates one column per distinct value of that
+field. Split by something high-cardinality (like `clientip`) and you get
+thousands of columns. Split by something small (`host`, `status`).
+:::
+
+## chart — over a field of your choice
+
+`chart` puts a **field** on the x-axis with `over`, and can split into
+series with a second field via `by`:
+
+```spl
+... | chart max(delay) over foo               ← max delay for each value of foo
+... | chart max(delay) over foo by bar         ← ...split into a series per bar
+... | chart count over status                  ← event count per status code
+```
+
+Read `over X by Y` as: x-axis = X, one series per value of Y.
+
+## Which one?
+
+- Asking **"how did this change over time?"** → `timechart`.
+- Asking **"how does this compare across categories?"** → `chart`.
+- Just need the numbers, not a chart → plain
+  [`stats`](/splunk/report/stats).
+
+All three share the same [statistical functions](/splunk/report/stats#common-stats-functions)
+(`count`, `avg`, `sum`, `dc`, `perc…`).
+
+Next: [top & rare](/splunk/report/top-rare) — distribution shortcuts.

@@ -1,0 +1,63 @@
+---
+sidebar_position: 5
+title: Performance
+description: Keep dashboards fast with scheduled reports, post-process / base searches, and accelerated data models.
+---
+
+# Dashboard performance
+
+A dashboard runs every panel's search, often on every load. Ten panels
+each running a fresh search over a wide time range is the classic recipe
+for a slow dashboard. The fixes all come down to **running less search,
+less often.**
+
+## Schedule the searches, don't run them live
+
+Back panels with **scheduled [reports](/splunk/dashboards/reports-and-alerts)**
+rather than ad-hoc inline searches. The report runs on a schedule and the
+panel displays the last completed result — so opening the dashboard reads
+a cached result instead of kicking off a fresh search every time.
+
+## Share one search with post-processing
+
+When several panels start from the **same** dataset and only differ at the
+end, don't run that base query N times. Run it once as a **base search**
+and have each panel **post-process** it — applying just its final
+[`stats`](/splunk/report/stats) / [`sort`](/splunk/format/sort) on the
+shared results.
+
+```spl
+Base search:   index=web sourcetype=access_combined earliest=-24h
+Panel A:       | stats count by host
+Panel B:       | stats count by uri_path
+Panel C:       | timechart count
+```
+
+One trip to disk, three cheap post-process steps — instead of three full
+searches. This is the dashboard form of the golden rule:
+[filter once, as early as possible](/splunk/filters).
+
+## Accelerate data models
+
+For dashboards built on **data models**, turn on **data model
+acceleration**. Accelerated data models pre-compute and store summary
+data, giving dramatic gains in search performance — which is exactly why
+they're so often used to power dashboard panels and on-demand reports.
+
+## Other levers
+
+These come straight from Splunk's search-optimization guidance and apply
+doubly on a dashboard, where searches run again and again:
+
+- **Tighten the time range.** Let the [time input](/splunk/dashboards/inputs-and-tokens)
+  default to something sane (`-24h`, not `-30d`).
+- **Filter specifically.** Narrow [`index` and `sourcetype`](/splunk/filters/base-filters)
+  in every base search.
+- **Avoid real-time panels** unless the use case truly needs live data.
+- **Use summary indexing** for expensive recurring rollups.
+
+:::tip Slow dashboard? Profile the panels
+A dashboard is only as fast as its slowest panel's search. Open each
+panel's search on its own, check the job inspector, and fix the SPL there
+— the dashboard speeds up for free.
+:::

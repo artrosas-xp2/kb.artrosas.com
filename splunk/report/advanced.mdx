@@ -1,0 +1,86 @@
+---
+sidebar_position: 6
+title: Advanced reporting
+description: Aggregate without collapsing (eventstats, streamstats), plus trendlines, prediction, and anomaly detection.
+---
+
+# Advanced reporting
+
+A few reporting commands go beyond a plain `stats` — some aggregate
+**without** throwing away your events, others add trend, prediction, and
+anomaly columns to a time series.
+
+## eventstats — aggregate, keep every event
+
+`eventstats` computes an aggregate like `stats` but **adds it back onto
+every event** as a new field instead of collapsing the rows. Perfect for
+"compare each event to the overall average."
+
+```spl
+... | eventstats avg(duration) as avgdur
+| where duration > avgdur          ← events slower than the average
+```
+
+After this, every event still exists, now carrying an `avgdur` column.
+
+## streamstats — running / cumulative stats
+
+`streamstats` computes statistics **in order, accumulating as it goes** —
+running totals, moving windows, row numbers:
+
+```spl
+... | streamstats sum(bytes) as bytes_total
+| timechart max(bytes_total)        ← cumulative bytes over time
+```
+
+Related single-purpose helpers from the guide:
+
+```spl
+... | accum count as total_count    ← running total of count
+... | delta count as countdiff      ← difference from the previous event
+```
+
+| Command | Collapses rows? | Sees other rows? |
+|---------|-----------------|------------------|
+| `stats` | **Yes** — summary table | all rows in the group |
+| `eventstats` | No — adds a column | all rows in the group |
+| `streamstats` | No — adds a column | only rows **so far** (running) |
+
+## trendline — smooth a series
+
+Add a moving-average column to a time series to cut through the noise.
+This computes a 5-event simple moving average of `count`:
+
+```spl
+... | timechart count | trendline sma5(count) as smoothed_count
+```
+
+(`sma` = simple, `ema` = exponential, `wma` = weighted moving average;
+the number is the window size.)
+
+## predict — forecast future values
+
+Extend a time series with a predicted value and confidence range:
+
+```spl
+... | timechart count | predict count
+```
+
+## anomalydetection — flag the unusual
+
+Surface events whose values are statistically anomalous. This looks for
+anomalies in `Close_Price` over the last 10 years:
+
+```spl
+sourcetype=nasdaq earliest=-10y | anomalydetection Close_Price
+```
+
+:::tip These build on a time series
+`trendline`, `predict`, and the like expect a series — pipe a
+[`timechart`](/splunk/report/chart-timechart) into them first, then layer
+the analysis on top.
+:::
+
+That's the reporting stage. Last comes the
+[format stage](/splunk/format)
+— sorting and presenting the summarized results.

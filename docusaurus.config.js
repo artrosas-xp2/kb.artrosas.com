@@ -8,15 +8,15 @@ import { themes as prismThemes } from 'prism-react-renderer';
 
 /** @type {import('@docusaurus/types').Config} */
 const config = {
-  title: 'Hardware Security Key KB',
-  tagline: 'Field notes from the trenches of enterprise MFA',
+  title: 'artrosas Knowledge Base',
+  tagline: 'Frequent notes and field-tested runbooks',
   favicon: 'img/favicon.ico',
 
   url: 'https://kb.artrosas.com',
   baseUrl: '/',
 
-  organizationName: 'artrosas',
-  projectName: 'kb',
+  organizationName: 'artrosas-xp2',
+  projectName: 'kb.artrosas.com',
 
   onBrokenLinks: 'warn',
   onBrokenMarkdownLinks: 'warn',
@@ -32,13 +32,49 @@ const config = {
       /** @type {import('@docusaurus/preset-classic').Options} */
       ({
         docs: {
+          // Hardware-key KB — served at /hardware-keys/
+          path: 'docs',
+          routeBasePath: 'hardware-keys',
           sidebarPath: './sidebars.js',
-          routeBasePath: '/',
           editUrl: undefined, // set this to your GitHub repo URL when ready
         },
         blog: false,
         theme: {
           customCss: './src/css/custom.css',
+        },
+      }),
+    ],
+  ],
+
+  plugins: [
+    [
+      '@docusaurus/plugin-content-docs',
+      /** @type {import('@docusaurus/plugin-content-docs').Options} */
+      ({
+        // Splunk KB — served at /splunk/
+        id: 'splunk',
+        path: 'splunk',
+        routeBasePath: 'splunk',
+        sidebarPath: './sidebarsSplunk.js',
+        editUrl: undefined,
+      }),
+    ],
+    [
+      '@docusaurus/plugin-client-redirects',
+      /** @type {import('@docusaurus/plugin-client-redirects').Options} */
+      ({
+        // The hardware-key KB used to live at the site root. Redirect every
+        // old root path (e.g. /runbooks/lockout-diagnosis) to its new home
+        // under /hardware-keys/. The root itself (/) is now the hub, so it
+        // is intentionally not redirected.
+        createRedirects(existingPath) {
+          if (
+            existingPath.startsWith('/hardware-keys/') &&
+            existingPath !== '/hardware-keys/'
+          ) {
+            return [existingPath.replace('/hardware-keys/', '/')];
+          }
+          return undefined;
         },
       }),
     ],
@@ -52,7 +88,7 @@ const config = {
         respectPrefersColorScheme: true,
       },
       navbar: {
-        title: 'Hardware Key KB',
+        title: 'artrosas KB',
         logo: {
           alt: 'Logo',
           src: 'img/logo.svg',
@@ -62,7 +98,14 @@ const config = {
             type: 'docSidebar',
             sidebarId: 'mainSidebar',
             position: 'left',
-            label: 'Docs',
+            label: 'Hardware Keys',
+          },
+          {
+            type: 'docSidebar',
+            sidebarId: 'splunkSidebar',
+            docsPluginId: 'splunk',
+            position: 'left',
+            label: 'Splunk',
           },
           {
             href: 'https://artrosas.com',
@@ -75,10 +118,10 @@ const config = {
         style: 'light',
         links: [
           {
-            title: 'Docs',
+            title: 'Knowledge Bases',
             items: [
-              { label: 'Runbooks', to: '/runbooks/lockout-diagnosis' },
-              { label: 'CLI reference', to: '/reference/cli-commands' },
+              { label: 'Hardware Keys', to: '/hardware-keys/' },
+              { label: 'Splunk', to: '/splunk/' },
             ],
           },
           {

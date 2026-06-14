@@ -1,0 +1,81 @@
+---
+sidebar_position: 4
+title: lookup — enrich from outside
+description: Join events against an external table to add context Splunk doesn't have in the raw data.
+---
+
+# `lookup` — enrich from external sources
+
+`lookup` adds field values from an **external source** — a CSV file or KV
+store collection — by matching on a shared field. Use it to add context
+that simply isn't in the raw event: turn a `user` into a `group`, an IP
+into an asset owner, a status code into a human description.
+
+```spl
+... | lookup usertogroup user OUTPUT group
+```
+
+Read as: *for each event, find the row in the `usertogroup` table whose
+`user` matches this event's `user`, and add that row's `group` field to
+the event.*
+
+## The three lookup commands
+
+| Command | What it does |
+|---------|--------------|
+| `lookup` | Enriches **each event** by matching a field against a lookup table. |
+| `inputlookup` | Loads a lookup table **as the search results** (no events needed). |
+| `outputlookup` | **Writes** the current results out to a lookup file. |
+
+### lookup — enrich events
+
+```spl
+... | lookup usertogroup user OUTPUT group
+```
+
+- `usertogroup` — the name of the lookup definition.
+- `user` — the field to match on (must exist in both event and table).
+- `OUTPUT group` — the field(s) from the table to add to each event.
+
+### inputlookup — read a table directly
+
+Loads the rows of a lookup as a result set — handy for inspecting or
+joining against the table itself:
+
+```spl
+| inputlookup usertogroup
+```
+
+(The lookup table is defined in `transforms.conf`.)
+
+### outputlookup — save results as a lookup
+
+Persist your search results to a CSV lookup file so other searches can
+enrich against them:
+
+```spl
+... | stats count by user | outputlookup users.csv
+```
+
+:::note Splunk Enterprise
+Lookup tables as described here are a Splunk Enterprise feature. The
+exact lookup definitions live in configuration (`transforms.conf`) or are
+created through the UI under **Settings → Lookups**.
+:::
+
+## Where lookups fit
+
+Lookups belong in the transform stage because they **add columns**,
+exactly like [`eval`](/splunk/transform/eval) and
+[`rex`](/splunk/transform/rex) — the difference is the new data comes
+from *outside* the event. A common pipeline:
+
+```spl
+index=web earliest=-1h
+| rex field=_raw "user=(?<user>\w+)"     ← extract the key
+| lookup usertogroup user OUTPUT group   ← enrich with external context
+| stats count by group                   ← then report
+```
+
+Next: [fields & rename](/splunk/transform/fields-and-rename) — tidy the
+columns before you report.

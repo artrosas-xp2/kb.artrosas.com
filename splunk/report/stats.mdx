@@ -1,0 +1,91 @@
+---
+sidebar_position: 2
+title: stats — aggregation workhorse
+description: Compute counts, sums, averages, and distinct counts over events, grouped by fields.
+---
+
+# `stats` — the aggregation workhorse
+
+`stats` provides statistics, optionally grouped by one or more fields. It
+collapses the event table into a summary table — the single most-used
+reporting command.
+
+```spl
+... | stats count by host
+```
+
+That's "how many events per host." Everything else is variations on it.
+
+## Anatomy
+
+```spl
+... | stats <function>(<field>) [as <name>] by <split-fields>
+```
+
+- **function** — what to compute: `count`, `sum`, `avg`, `dc`, `max`, …
+- **by** — the field(s) to group on. Omit `by` for a single grand total.
+- **as** — rename the output column.
+
+## Common stats functions
+
+| Function | Returns |
+|----------|---------|
+| `count(X)` | Number of events (or of field X). |
+| `dc(X)` | Distinct count of values. |
+| `sum(X)` | Sum of values. |
+| `avg(X)` | Average. |
+| `min(X)` / `max(X)` | Minimum / maximum. |
+| `median(X)` | Middle value. |
+| `mode(X)` | Most frequent value. |
+| `perc<X>(Y)` | X-th percentile of Y (e.g. `perc95(rt)`). |
+| `stdev(X)` | Sample standard deviation. |
+| `range(X)` | Max minus min. |
+| `values(X)` | All distinct values, as a multi-value field. |
+
+Field names can be **wildcarded** — `avg(*delay)` averages `delay`,
+`xdelay`, and any field ending in `delay`.
+
+## Patterns I reach for
+
+```spl
+... | stats count by host                          ← events per host
+... | stats dc(clientip) as unique_visitors        ← distinct client IPs
+... | stats count, avg(rt) as avg_rt by uri_path   ← two metrics, grouped
+... | stats avg(*lay) by date_hour                 ← wildcard fields, per hour
+... | stats sum(bytes) as total_bytes by user      ← bytes per user
+... | stats values(status) by host                 ← which statuses each host saw
+```
+
+### Count only matching events
+
+Wrap an eval inside `count` to count just the rows you want, alongside the
+total:
+
+```spl
+... | stats count as total, count(eval(status>=500)) as errors by host
+```
+
+### sparkline
+
+Add a tiny inline chart per group right in the results table:
+
+```spl
+... | stats sparkline count by host
+```
+
+## Multiple group-by fields
+
+List several fields after `by` to group on the combination:
+
+```spl
+... | stats count by host, status
+```
+
+:::note stats vs. mstats
+`stats` runs over **events**. For **metric** indexes, use `mstats`, which
+works the same way on metric data points:
+`| mstats avg(aws.ec2.CPUUtilization) WHERE index=_metrics span=30s`.
+:::
+
+Next: [chart & timechart](/splunk/report/chart-timechart) — the same
+aggregation, shaped for visualization.

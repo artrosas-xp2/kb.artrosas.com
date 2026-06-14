@@ -274,3 +274,56 @@ code {
 [data-theme='dark'] .decision-badge.success { color: #4ade80; }
 [data-theme='dark'] .decision-badge.warning { color: #facc15; }
 [data-theme='dark'] .decision-badge.danger { color: #f87171; }
+
+/* ---------------------------------------------------------------------------
+ * Color-coded sidebar sections (Splunk KB)
+ * Each top-level section category gets a distinct accent color: a left rail
+ * on the whole group plus a tinted, bold header label, so the sections are
+ * visually distinct at a glance. Classes are applied via `className` in
+ * sidebarsSplunk.js, so this only affects the Splunk sidebar.
+ * ------------------------------------------------------------------------- */
+:root {
+  --stage-filters: #3b82f6;     /* blue   */
+  --stage-transform: #8b5cf6;   /* violet */
+  --stage-report: #10b981;      /* green  */
+  --stage-format: #f59e0b;      /* amber  */
+  --stage-dashboards: #14b8a6;  /* teal   */
+  --stage-reference: #94a3b8;   /* slate  */
+}
+
+[data-theme='dark'] {
+  --stage-filters: #60a5fa;
+  --stage-transform: #a78bfa;
+  --stage-report: #34d399;
+  --stage-format: #fbbf24;
+  --stage-dashboards: #2dd4bf;
+  --stage-reference: #94a3b8;
+}
+
+/* Colored left rail spanning the whole section group */
+.sidebar-stage {
+  border-left: 3px solid var(--stage-color, transparent);
+  border-radius: 3px;
+  margin-top: 0.2rem;
+  padding-left: 2px;
+}
+
+/* Tinted, bold header label for the section */
+.sidebar-stage > .menu__list-item-collapsible > .menu__link,
+.sidebar-stage > .menu__link {
+  color: var(--stage-color);
+  font-weight: 600;
+}
+
+/* A soft tint on the header background when active/hovered, in-theme */
+.sidebar-stage > .menu__list-item-collapsible:hover,
+.sidebar-stage > .menu__list-item-collapsible > .menu__link--active {
+  background: color-mix(in srgb, var(--stage-color) 12%, transparent);
+}
+
+.sidebar-stage-filters    { --stage-color: var(--stage-filters); }
+.sidebar-stage-transform  { --stage-color: var(--stage-transform); }
+.sidebar-stage-report     { --stage-color: var(--stage-report); }
+.sidebar-stage-format     { --stage-color: var(--stage-format); }
+.sidebar-stage-dashboards { --stage-color: var(--stage-dashboards); }
+.sidebar-stage-reference  { --stage-color: var(--stage-reference); }

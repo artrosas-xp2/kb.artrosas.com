@@ -1,0 +1,91 @@
+---
+sidebar_position: 3
+title: SPL cheatsheet
+description: The SPL commands, eval functions, and stats functions I reach for most.
+---
+
+# SPL cheatsheet
+
+Quick reference for the commands and functions I use most. For *how to
+order* them in a search, see [Anatomy of a search](/splunk/notes/structured-query).
+
+## Common search commands
+
+| Command | Description |
+|---------|-------------|
+| `search` | Filters results to those that match the search expression. |
+| `where` | Filters using eval expressions; compares two fields. |
+| `eval` | Calculates an expression into a new field. |
+| `rex` | Extracts fields with named regex groups. |
+| `fields` | Keeps or removes fields from results. |
+| `rename` | Renames a field (wildcards allowed). |
+| `dedup` | Removes subsequent results matching a criterion. |
+| `head` / `tail` | Returns the first / last N results. |
+| `sort` | Sorts results by the specified fields. |
+| `stats` | Statistics, optionally grouped by fields. |
+| `chart` / `timechart` | Tabular / time-series output for charting. |
+| `top` / `rare` | Most / least common values of a field. |
+| `table` | Keeps the specified fields in tabular format. |
+| `lookup` | Adds field values from an external source. |
+| `transaction` | Groups related events into transactions. |
+
+## Common eval functions
+
+Used with `eval` (and inside `where`). Also supports arithmetic
+(`+ - * / %`), concatenation (`.`), and booleans
+(`AND OR NOT XOR < > <= >= != = == LIKE`).
+
+| Function | Description | Example |
+|----------|-------------|---------|
+| `if(X,Y,Z)` | Y if X is true, else Z. | `if(status==200,"OK","Error")` |
+| `case(X,"Y",...)` | First true X returns its Y. | `case(error==404,"Not found",error==500,"Server Error")` |
+| `coalesce(X,...)` | First non-null value. | `coalesce(nick, first, "n/a")` |
+| `in(field,list)` | True if field matches a value in list. | `if(in(status,"404","500"),"bad","ok")` |
+| `like(X,"Y")` | True if X matches SQLite pattern Y. | `like(uri,"/admin%")` |
+| `match(X,Y)` | True if X matches regex Y. | `match(ip,"^\d{1,3}\.")` |
+| `cidrmatch("X",Y)` | True if IP Y is in subnet X. | `cidrmatch("10.0.0.0/8",clientip)` |
+| `len(X)` | Character length of string X. | `len(username)` |
+| `lower(X)` / `upper(X)` | Lower / upper case. | `lower(username)` |
+| `substr(X,Y,Z)` | Substring from position Y (1-based), Z chars. | `substr(field,1,3)` |
+| `replace(X,Y,Z)` | Replace regex Y with Z in X. | `replace(date,"/","-")` |
+| `round(X,Y)` | Round X to Y decimals. | `round(rt,2)` |
+| `tostring(X,Y)` | Format X as string (`hex`/`commas`/`duration`). | `tostring(secs,"duration")` |
+| `strftime(X,Y)` | Epoch X → string format Y. | `strftime(_time,"%H:%M")` |
+| `relative_time(X,Y)` | Apply relative spec Y to epoch X. | `relative_time(now(),"-1d@d")` |
+| `isnull(X)` / `isnotnull(X)` | Null checks. | `where isnotnull(user)` |
+
+## Common stats functions
+
+Used with `stats`, `chart`, and `timechart`. Field names can be
+wildcarded (`avg(*delay)`).
+
+| Function | Returns |
+|----------|---------|
+| `count(X)` | Number of occurrences. |
+| `dc(X)` | Distinct count of values. |
+| `sum(X)` | Sum of values. |
+| `avg(X)` | Average of values. |
+| `min(X)` / `max(X)` | Minimum / maximum. |
+| `median(X)` | Middle-most value. |
+| `mode(X)` | Most frequent value. |
+| `perc<X>(Y)` | X-th percentile of Y (e.g. `perc95(rt)`). |
+| `stdev(X)` | Sample standard deviation. |
+| `range(X)` | Max minus min. |
+| `values(X)` | All distinct values (multi-value, alphabetical). |
+| `earliest(X)` / `latest(X)` | Chronologically first / last value. |
+
+## Handy one-liners
+
+```spl
+index=web | stats count by host                     ← count events per host
+index=web | top limit=20 uri_path                   ← 20 most common URIs
+index=web | timechart span=1m avg(response_time)    ← avg response time per minute
+index=web | rex field=_raw "user=(?<user>\w+)"      ← extract a field with regex
+index=web | stats dc(clientip) as unique_visitors   ← distinct client IPs
+... | transaction clientip startswith="signon" endswith="purchase"  ← sessionize
+```
+
+:::note Source
+Distilled from the official Splunk Quick Reference Guide. Add your own
+frequently-used searches as you go.
+:::

@@ -1,0 +1,71 @@
+---
+sidebar_position: 2
+title: rex — extract with regex
+description: Pull structured fields out of raw event text using named regex capture groups.
+---
+
+# `rex` — extract fields with regex
+
+`rex` specifies regular-expression **named groups** to extract fields
+from the raw text of an event. Reach for it when a value you need is
+sitting in `_raw` (or another field) but hasn't been extracted as its own
+field yet.
+
+```spl
+... | rex field=_raw "user=(?<username>\w+)"
+```
+
+Each `(?<name>...)` capture group becomes a new field on every matching
+event.
+
+## How it works
+
+- `field=_raw` tells `rex` what to run the pattern against. `_raw` (the
+  whole event) is the default, but you can target any field.
+- `(?<fieldname>pattern)` is a **named capture group** — the text it
+  matches is stored in a field called `fieldname`.
+- Events where the pattern doesn't match are left unchanged (the new
+  field just won't be set).
+
+## Worked example
+
+Given a raw event containing `From: Susan To: David`:
+
+```spl
+... | rex field=_raw "From: (?<from>.*) To: (?<to>.*)"
+```
+
+Result: `from=Susan` and `to=David` — two new fields you can now filter,
+group, or report on.
+
+## Common patterns
+
+```spl
+... | rex field=_raw "user=(?<username>\w+)"              ← a word after user=
+... | rex field=_raw "status=(?<status>\d{3})"           ← a 3-digit code
+... | rex field=uri "/(?<section>[^/]+)/"                 ← first path segment
+... | rex field=_raw "(?<ip>\d{1,3}(\.\d{1,3}){3})"      ← an IPv4 address
+```
+
+Regex building blocks you'll use constantly: `\w` word char, `\d` digit,
+`\s` whitespace, `.` any char, `*` zero-or-more, `+` one-or-more,
+`{n}` exactly n, `[^/]` "not a slash".
+
+## rex vs. the Field Extractor
+
+For values you extract **repeatedly**, don't keep re-typing `rex`. Splunk's
+**Field Extractor** tool generates and validates search-time field
+extractions for you (using regex or delimiters like spaces and commas)
+and saves them as a persistent knowledge object — so the field is
+extracted automatically on future searches. Use inline `rex` for one-off
+or ad-hoc extraction; promote it to a saved extraction once it's a keeper.
+
+:::tip Extract, then filter
+A field you just pulled out with `rex` can immediately be used by later
+commands — including a [`where`](/splunk/filters/where-command) to filter
+on it, or a [`stats ... by`](/splunk/notes/search-cheatsheet) to group on
+it.
+:::
+
+Next: [eval](/splunk/transform/eval) — compute new fields from the ones
+you've extracted.

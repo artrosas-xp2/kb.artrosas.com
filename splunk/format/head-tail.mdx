@@ -1,0 +1,56 @@
+---
+sidebar_position: 3
+title: head, tail & reverse
+description: Keep just the first or last N rows, or reverse the order of the result set.
+---
+
+# `head`, `tail` & `reverse`
+
+Once the set is ordered, these trim and flip it. They're simple, and you
+reach for them constantly to produce a final "top N" or to invert order.
+
+## head — the first N rows
+
+```spl
+... | head 20         ← keep the first 20 results
+```
+
+Paired with [`sort`](/splunk/format/sort), this is the canonical "top N":
+
+```spl
+... | stats count by host | sort -count | head 10   ← the 10 busiest hosts
+```
+
+## tail — the last N rows
+
+`tail` returns the **last** N results, in reverse order:
+
+```spl
+... | tail 20         ← the last 20 results, reversed
+```
+
+## reverse — flip the whole set
+
+`reverse` reverses the order of the entire result set without limiting it:
+
+```spl
+... | reverse
+```
+
+## How they relate
+
+| Command | Keeps | Order of output |
+|---------|-------|-----------------|
+| `head N` | first N rows | unchanged |
+| `tail N` | last N rows | reversed |
+| `reverse` | all rows | reversed |
+
+:::note head/tail show up in two stages
+You'll also see `head`/`tail` in the [filter stage](/splunk/filters/dedup-head),
+where they cap rows early to sample data cheaply. Same commands — here in
+the format stage the intent is different: you're choosing the final rows
+to *present* after everything is computed and sorted.
+:::
+
+Next: [table, fields & rename](/splunk/format/table-rename) — choose and
+label the columns.

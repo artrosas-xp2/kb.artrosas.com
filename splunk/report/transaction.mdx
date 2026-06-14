@@ -1,0 +1,78 @@
+---
+sidebar_position: 5
+title: transaction
+description: Stitch multiple related events into a single logical unit spanning a duration of time.
+---
+
+# `transaction`
+
+`transaction` groups search results into transactions — a single logical
+unit built from multiple events that are conceptually related but span a
+duration of time. The classic use is **sessionization**: all the events
+for one customer session on a website, grouped into one row.
+
+```spl
+... | transaction clientip startswith="signon" endswith="purchase"
+```
+
+## How grouping works
+
+You give `transaction` the field(s) that tie events together, plus
+optional constraints on timing and boundaries:
+
+| Option | Meaning |
+|--------|---------|
+| `<field(s)>` | Events sharing these field values belong to the same transaction. |
+| `maxspan` | Max total duration of a transaction. |
+| `maxpause` | Max gap allowed between consecutive events. |
+| `startswith` | An event matching this **opens** a transaction. |
+| `endswith` | An event matching this **closes** a transaction. |
+
+## Worked examples
+
+Group events with the same `host` and `cookie` that occur within 30
+seconds of each other, with no gap over 5 seconds:
+
+```spl
+... | transaction host cookie maxspan=30s maxpause=5s
+```
+
+Group by `clientip`, where the session **opens** with a `signon` event
+and **closes** with a `purchase` event:
+
+```spl
+... | transaction clientip startswith="signon" endswith="purchase"
+```
+
+## What a transaction gives you
+
+Each resulting row is one transaction, with handy auto-computed fields:
+
+- `duration` — seconds from first to last event in the group.
+- `eventcount` — how many events were merged.
+
+So you can immediately report on session behaviour:
+
+```spl
+... | transaction clientip startswith="signon" endswith="purchase"
+| stats avg(duration) as avg_session, avg(eventcount) as avg_steps
+```
+
+:::caution transaction is expensive
+It holds events in memory to group them, so it can be slow over large
+result sets. [Filter hard first](/splunk/filters), and where you only
+need counts of distinct values, a `stats … by <id>` is often cheaper than
+a full `transaction`.
+:::
+
+## Related: cluster
+
+To group **similar** events (rather than ones sharing a key), `cluster`
+buckets results by similarity. This finds the 20 largest clusters by size:
+
+```spl
+... | cluster t=0.9 showcount=true | sort limit=20 -cluster_count
+```
+
+Next: [advanced reporting](/splunk/report/advanced) — aggregate without
+collapsing, plus trends and predictions.

@@ -1,0 +1,65 @@
+---
+slug: /dashboards
+sidebar_position: 1
+title: Dashboards
+description: Turning saved searches into panels, visualizations, and interactive dashboards.
+---
+
+# Dashboards
+
+A dashboard is made up of **panels** that contain modules such as search
+boxes, fields, and data visualizations. Panels are usually connected to
+**saved searches**, and can display the results of completed searches as
+well as data from real-time searches.
+
+Where the [search pipeline](/splunk/notes/structured-query) is about
+*getting* an answer, dashboards are about *presenting* it — repeatedly,
+to other people, without anyone having to re-type SPL.
+
+:::tip A dashboard is just searches with a frame around them
+Every panel is backed by a search. If a panel is slow or wrong, the fix
+is almost always in its underlying SPL — so the
+[search pipeline](/splunk/notes/structured-query) still applies.
+:::
+
+## How the pieces fit
+
+| Piece | What it is |
+|-------|------------|
+| **Dashboard** | A page made of one or more panels. |
+| **Panel** | A single tile — a chart, table, or single value. |
+| **Visualization** | How a panel renders its results (line chart, table, map, …). |
+| **Search** | The SPL that feeds a panel — inline, or a saved [report](/splunk/dashboards/reports-and-alerts). |
+| **Input** | An interactive control (time picker, dropdown) that filters panels. |
+
+## Two ways to build one
+
+Modern Splunk gives you two dashboard frameworks:
+
+- **Classic dashboards (Simple XML)** — the long-standing framework.
+  Dashboards are defined in Simple XML (often generated for you by the UI)
+  and are easy to template and source-control.
+- **Dashboard Studio** — the newer, layout-driven builder with richer
+  visualizations and pixel-level control, defined in JSON.
+
+The concepts below — panels, searches, inputs, and performance — apply to
+both; only the authoring surface differs.
+
+## This section
+
+### [Panels & visualizations →](/splunk/dashboards/panels)
+What a panel is, how it's wired to a search, and the common visualization
+types.
+
+### [Inputs & tokens →](/splunk/dashboards/inputs-and-tokens)
+Make a dashboard interactive — time pickers and dropdowns that drive the
+panel searches.
+
+### [Reports & alerts →](/splunk/dashboards/reports-and-alerts)
+Saved searches that power panels and fire actions when conditions are met.
+
+### [Performance →](/splunk/dashboards/performance)
+Keep dashboards fast with scheduled reports, post-process / base
+searches, and accelerated data models.
+
+Next: [panels & visualizations](/splunk/dashboards/panels).

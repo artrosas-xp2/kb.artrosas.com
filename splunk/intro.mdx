@@ -1,0 +1,51 @@
+---
+slug: /
+sidebar_position: 1
+title: Introduction
+hide_title: true
+---
+
+<div className="intro-hero">
+  <h1>Splunk KB</h1>
+  <p className="lead">
+    Frequent notes, search snippets, and operational reminders for the
+    Splunk tasks I reach for often enough to not want to re-derive.
+  </p>
+</div>
+
+This is a working notebook, not a tutorial. It captures the SPL I keep
+re-typing, the config gotchas, and the "how did I do that last time"
+answers — sanitized for public reference.
+
+## Start here
+
+<div className="card-grid">
+
+<a className="card" href="/splunk/notes/structured-query">
+  <h3>Anatomy of a search</h3>
+  <p>The order Splunk recommends you build a search in — filter first, then transform, report, and format. Start here.</p>
+</a>
+
+<a className="card" href="/splunk/filters">
+  <h3>Filters</h3>
+  <p>Stage one of every search: index, sourcetype, time modifiers, booleans, and where. The biggest lever for speed.</p>
+</a>
+
+<a className="card" href="/splunk/dashboards">
+  <h3>Dashboards</h3>
+  <p>Turning saved searches into panels, interactive inputs, alerts, and fast dashboards.</p>
+</a>
+
+<a className="card" href="/splunk/notes/search-cheatsheet">
+  <h3>SPL cheatsheet</h3>
+  <p>The commands, eval functions, and stats functions I reach for most — distilled from the quick reference guide.</p>
+</a>
+
+</div>
+
+## A note on scope
+
+These notes assume a working Splunk Enterprise / Cloud deployment and
+focus on day-to-day search and operational work rather than admin or
+architecture. Index names, hostnames, and field values have been
+generalized.

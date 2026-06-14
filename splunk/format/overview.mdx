@@ -1,0 +1,60 @@
+---
+slug: /format
+sidebar_position: 1
+title: Format
+description: Stage four of a Splunk search — order and present the summarized results for display.
+---
+
+# Format
+
+Formatting is the **fourth and final** stage of
+[building a search](/splunk/notes/structured-query). The
+[report stage](/splunk/report) handed you a small summary table; now you
+put it in the right order and shape it for whoever's reading — a person, a
+dashboard panel, or an alert.
+
+:::tip This stage is cosmetic — and that's the point
+Filtering, transforming, and reporting decided *what* the answer is.
+Formatting only decides how it **looks**: row order, how many rows,
+column order, column names. Do it last, on the already-tiny result set.
+:::
+
+## The mental model
+
+By now the heavy lifting is done and the table is small. These commands
+reorder rows, trim to the rows worth showing, and tidy the columns — they
+don't go back to disk or recompute anything.
+
+```spl
+... | stats count by uri_path        ← the report (summary table)
+| sort -count                        ← order: busiest first
+| head 10                            ← limit: just the top 10
+| rename uri_path AS "Page", count AS "Hits"   ← present: readable headers
+```
+
+## The formatting commands
+
+### [sort — order the rows →](/splunk/format/sort)
+Order the result set by one or more fields, ascending or descending, with
+an optional row cap.
+
+### [head, tail & reverse — limit & flip →](/splunk/format/head-tail)
+Keep just the first or last N rows, or reverse the order of the set.
+
+### [table, fields & rename — present →](/splunk/format/table-rename)
+Choose the columns and their order, and give them human-readable names
+for the final output.
+
+## Where this sits in the pipeline
+
+This is the end of the line. A fully ordered search reads top to bottom
+as filter → transform → report → format:
+
+```spl
+index=web sourcetype=access_combined status>=500 earliest=-24h   ← filter
+| rex field=_raw "user=(?<username>\w+)"                          ← transform
+| stats count by username                                        ← report
+| sort -count | head 10 | rename username AS "User"              ← format
+```
+
+Next: start with [sort](/splunk/format/sort).

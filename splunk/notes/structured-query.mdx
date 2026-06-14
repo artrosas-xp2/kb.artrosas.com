@@ -1,0 +1,136 @@
+---
+sidebar_position: 2
+title: Anatomy of a search
+description: The order Splunk recommends you build a search in — filter first, then transform, report, and format.
+---
+
+# Anatomy of a search
+
+A Splunk search is a pipeline. Commands are chained with `|`, and the
+output of one command feeds the next:
+
+```spl
+search | command1 args | command2 args | ...
+```
+
+The **order** you build that pipeline in matters — not just for
+readability, but for performance. The golden rule from Splunk's own
+guidance:
+
+:::tip The one rule that matters most
+Limit the data pulled off disk to an absolute minimum, then **filter as
+early as possible** so every later command works on the smallest dataset.
+:::
+
+Build your search in these four stages, in this order:
+
+## 1. Filter — narrow the data
+
+Everything starts here. The implied `search` command at the front of the
+pipeline retrieves events from an index, so the more you constrain it, the
+less data Splunk has to read off disk.
+
+```spl
+index=web sourcetype=access_combined status>=500 earliest=-1h
+```
+
+This is the most important stage for performance, and the one with the
+most moving parts. It has its own section:
+
+- **[What "filtering" means →](/splunk/filters)** — the full
+  breakdown of every kind of filter and the order to apply them.
+
+The filter stage breaks down into:
+
+| Filter | Purpose |
+|--------|---------|
+| [Base filters](/splunk/filters/base-filters) | `index`, `sourcetype`, `source`, `host` — pick the right data |
+| [Time modifiers](/splunk/filters/time-modifiers) | `earliest` / `latest` — the single most powerful filter |
+| [Keywords & booleans](/splunk/filters/keywords-and-booleans) | terms, phrases, `AND`/`OR`/`NOT`, wildcards, comparisons |
+| [The `where` command](/splunk/filters/where-command) | filter on computed values and field-to-field comparisons |
+| [`dedup`, `head`, `fields`](/splunk/filters/dedup-head) | trim rows and columns further down the pipe |
+
+## 2. Transform — extract and compute
+
+Once the dataset is small, reshape it. Pull new fields out of the raw
+text, compute values, and enrich from external sources.
+
+```spl
+| rex field=_raw "user=(?<username>\w+)"
+| eval is_error = if(status>=500, "yes", "no")
+| lookup usertogroup user OUTPUT group
+```
+
+Like filtering, this stage has its own section:
+
+- **[What "transforming" means →](/splunk/transform)** — extracting,
+  computing, and enriching, broken down command by command.
+
+The transform stage breaks down into:
+
+| Command | Purpose |
+|---------|---------|
+| [rex](/splunk/transform/rex) | extract fields from raw text with regex |
+| [eval](/splunk/transform/eval) | calculate & derive new fields |
+| [lookup](/splunk/transform/lookups) | enrich from external tables |
+| [fields & rename](/splunk/transform/fields-and-rename) | keep, drop, and rename columns |
+
+## 3. Report — aggregate and summarize
+
+Collapse many events into statistics, tables, or time series.
+
+```spl
+| stats count, avg(response_time) as avg_rt by username
+```
+
+This stage has its own section too:
+
+- **[What "reporting" means →](/splunk/report)** — collapsing events into
+  statistics, charts, and time series.
+
+The report stage breaks down into:
+
+| Command | Purpose |
+|---------|---------|
+| [stats](/splunk/report/stats) | aggregate events into a summary table |
+| [chart & timechart](/splunk/report/chart-timechart) | the same, shaped for visualization |
+| [top & rare](/splunk/report/top-rare) | most / least common values of a field |
+| [transaction](/splunk/report/transaction) | group related events into one |
+| [advanced](/splunk/report/advanced) | `eventstats`, `streamstats`, `trendline`, `predict` |
+
+## 4. Format — order and present
+
+Last, shape the final result set for display.
+
+```spl
+| sort -count
+| head 20
+| table username, count, avg_rt
+```
+
+The final stage has its own section as well:
+
+- **[What "formatting" means →](/splunk/format)** — ordering, limiting,
+  and presenting the summarized results.
+
+The format stage breaks down into:
+
+| Command | Purpose |
+|---------|---------|
+| [sort](/splunk/format/sort) | order the rows, ascending or descending |
+| [head, tail & reverse](/splunk/format/head-tail) | limit to the first/last N, or flip the set |
+| [table, fields & rename](/splunk/format/table-rename) | choose, order, and label the columns |
+
+## Putting it together
+
+A well-ordered search reads like the stages above, top to bottom:
+
+```spl
+index=web sourcetype=access_combined status>=500 earliest=-24h   ← 1. filter
+| rex field=_raw "user=(?<username>\w+)"                          ← 2. transform
+| stats count by username                                        ← 3. report
+| sort -count | head 10                                          ← 4. format
+```
+
+Each stage hands a smaller, cleaner table to the next. Start with
+[the filter stage](/splunk/filters).

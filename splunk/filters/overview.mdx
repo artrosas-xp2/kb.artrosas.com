@@ -1,0 +1,68 @@
+---
+slug: /filters
+sidebar_position: 1
+title: Filters
+description: Filtering is stage one of a Splunk search — narrow the data before doing anything else.
+---
+
+# Filters
+
+Filtering is **stage one** of [building a search](/splunk/notes/structured-query).
+It's the act of telling Splunk to read as little data off disk as
+possible, and to discard what you don't need as early as possible in the
+pipeline.
+
+Get this stage right and everything downstream is fast. Get it wrong —
+search too broadly, or filter too late — and even a simple report can
+crawl.
+
+:::tip Why filtering comes first
+Every command after the filter stage operates on whatever rows survived
+it. A `stats` over 10,000 events is instant; the same `stats` over 10
+million is not. The cheapest event is the one Splunk never reads.
+:::
+
+## The kinds of filter
+
+Splunk gives you several ways to narrow data. They're listed here in the
+rough order you apply them in a pipeline — from "pick the data" to "trim
+what's left":
+
+### [Base filters →](/splunk/filters/base-filters)
+`index`, `sourcetype`, `source`, `host`. The field/value pairs at the
+very front of the search that decide **which data** is read off disk.
+Start every search here.
+
+### [Time modifiers →](/splunk/filters/time-modifiers)
+`earliest` and `latest`. Time is the single most powerful filter in
+Splunk — narrowing the window often cuts more data than anything else.
+
+### [Keywords & booleans →](/splunk/filters/keywords-and-booleans)
+Free-text terms, quoted phrases, `AND` / `OR` / `NOT`, wildcards, and
+field comparison expressions (`status>=500`). The matching logic of the
+implied `search` command.
+
+### [The `where` command →](/splunk/filters/where-command)
+Filtering on **computed** values and **field-to-field** comparisons —
+things the base `search` can't express.
+
+### [`dedup`, `head`, and `fields` →](/splunk/filters/dedup-head)
+Trimming the result set further down the pipeline: drop duplicate rows,
+cap the row count, and remove columns you don't need.
+
+## The mental model
+
+Think of the search results as a table that each command reshapes.
+Filtering commands **remove rows** (and `fields` removes columns). The
+whole point of stage one is to make that table as small as it can be
+before any transforming or reporting work begins.
+
+```spl
+index=web sourcetype=access_combined   ← base filter: which data
+  status>=500                          ← comparison: which rows
+  earliest=-1h                         ← time: which window
+| where bytes > 0                      ← computed filter
+| dedup clientip                       ← trim duplicate rows
+```
+
+Next: start with [base filters](/splunk/filters/base-filters).

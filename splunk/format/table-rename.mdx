@@ -1,0 +1,70 @@
+---
+sidebar_position: 4
+title: table, fields & rename
+description: Choose the columns and their order, and give them human-readable names for the final output.
+---
+
+# `table`, `fields` & `rename`
+
+The last touch: decide exactly which columns appear, in what order, and
+under what names. This is what turns a working result set into something
+clean enough for a dashboard panel or a shared report.
+
+## table — pick the columns, in order
+
+`table` keeps the named fields and displays them **in the order you list
+them**, dropping everything else:
+
+```spl
+... | table _time, host, status, uri_path
+```
+
+It's the go-to command for defining the final shape of a tabular result.
+
+## fields — keep or drop
+
+[`fields`](/splunk/transform/fields-and-rename) does similar column
+selection mid-pipeline. The practical split:
+
+| Use | When |
+|-----|------|
+| `fields + a, b` | shaping data **mid-pipeline** (and for speed, dropping big fields early) |
+| `table a, b` | defining the **final** columns for display |
+
+```spl
+... | fields + host, ip        ← keep only these (mid-search)
+... | table host, ip           ← present these as the output table
+```
+
+## rename — readable headers
+
+`rename` gives columns human-friendly names — essential right before
+display. Quote names that contain spaces:
+
+```spl
+... | rename uri_path AS "Page", count AS "Hits", avg_rt AS "Avg ms"
+```
+
+Wildcards rename many fields by pattern in one go:
+
+```spl
+... | rename *_secs AS *_seconds
+```
+
+## A finished, fully-ordered search
+
+Pulling all four stages together — filter, transform, report, format:
+
+```spl
+index=web sourcetype=access_combined status>=500 earliest=-24h   ← filter
+| rex field=_raw "user=(?<username>\w+)"                          ← transform
+| stats count as hits, avg(response_time) as avg_rt by username   ← report
+| sort -hits                                                      ← format: order
+| head 10                                                        ← format: limit
+| rename username AS "User", hits AS "Errors", avg_rt AS "Avg ms" ← format: label
+```
+
+That's the whole pipeline. Head back to
+[Anatomy of a search](/splunk/notes/structured-query) for the big picture,
+or the [SPL cheatsheet](/splunk/notes/search-cheatsheet) for a quick
+command lookup.

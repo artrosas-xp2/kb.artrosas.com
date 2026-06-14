@@ -1,0 +1,76 @@
+---
+sidebar_position: 2
+title: Base filters
+description: index, sourcetype, source, and host — the field/value pairs that decide which data Splunk reads off disk.
+---
+
+# Base filters
+
+These are the field/value pairs you put at the **very front** of a
+search, before the first `|`. They run as the implied `search` command
+and decide *which data* Splunk pulls off disk. Getting them specific is
+the highest-leverage thing you can do for performance.
+
+| Field | What it selects |
+|-------|-----------------|
+| `index` | Which index to read from. The biggest performance lever. |
+| `sourcetype` | The format/type of the data (e.g. `access_combined`). |
+| `source` | The file, directory, or input the event came from. |
+| `host` | The device the event originated on. |
+
+## index
+
+Data lives in indexes. By default everything goes to `main`, but
+well-run deployments partition data — web logs in one index, firewall
+logs in another. Naming the index means Splunk only opens those buckets:
+
+```spl
+index=web
+index=security
+```
+
+:::tip Always name your index
+If you don't specify an `index`, Splunk searches the default set, which
+is almost always more data than you need. Make `index=` the first thing
+you type.
+:::
+
+## sourcetype
+
+The source type classifies the data format. Events from different
+sources often share a source type — `source=/var/log/messages` and a
+syslog input on `source=UDP:514` can both be
+`sourcetype=linux_syslog`.
+
+```spl
+index=web sourcetype=access_combined
+```
+
+## source and host
+
+`source` is the specific input path; `host` is the originating device.
+Use them to drill into a single file or machine:
+
+```spl
+index=os host=web-prod-03 source=/var/log/secure
+```
+
+## Combining them
+
+Base filters are `AND`-ed together implicitly. Stack them to pin down
+exactly the data you want:
+
+```spl
+index=web sourcetype=access_combined host=web-prod-*
+```
+
+## Why this matters
+
+From Splunk's optimization guidance: *partition data into separate
+indexes if you'll rarely search across them*, and *search as
+specifically as you can*. The base filter stage is where both of those
+pay off — narrow `index` + `sourcetype` means later commands work on a
+fraction of the data.
+
+Next: [time modifiers](/splunk/filters/time-modifiers) — often an even
+bigger lever than the index.

@@ -23,3 +23,10 @@ yarn-error.log*
 *.bak
 
 .claude/
+
+# Reference source material (kept locally, used to author notes — not published)
+kb-reference/
+splunk-quick-reference.pdf
+
+# Generated diagnostic snapshot (regenerate with: bash diagnose.sh > diagnose-report.txt)
+diagnose-report.txt

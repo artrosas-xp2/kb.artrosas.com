@@ -1,0 +1,94 @@
+---
+sidebar_position: 3
+title: eval — calculate & derive
+description: Compute new fields with arithmetic, string operations, conditional logic, and type conversion.
+---
+
+# `eval` — calculate & derive fields
+
+`eval` calculates an expression and puts the result into a field. It's
+the most-used transforming command — anything you need to *compute*,
+*combine*, or *conditionally set* goes through `eval`.
+
+```spl
+... | eval force = mass * acceleration
+... | eval velocity = distance / time
+```
+
+If the field already exists it's overwritten; if not, it's created.
+
+## What you can put in an expression
+
+**Arithmetic operators** — `+ - * / %`:
+
+```spl
+... | eval error_rate = errors / total * 100
+```
+
+**String concatenation** with `.`:
+
+```spl
+... | eval full_name = last . ", " . first
+```
+
+**Boolean / comparison operators** — `AND OR NOT XOR < > <= >= != = == LIKE`:
+
+```spl
+... | eval is_slow = if(response_time > 1 AND status = 200, "yes", "no")
+```
+
+## Conditional logic
+
+This is where `eval` earns its keep — deriving a value that depends on
+other fields:
+
+```spl
+... | eval kind = if(status>=500, "server_error", "ok")
+
+... | eval label = case(
+        status==404, "Not found",
+        status==500, "Server error",
+        status==200, "OK")
+
+... | eval display_name = coalesce(nickname, username, "anonymous")
+
+... | eval flagged = if(in(status,"404","500","503"), "true", "false")
+```
+
+| Function | Does |
+|----------|------|
+| `if(X,Y,Z)` | Y when X is true, otherwise Z. |
+| `case(X1,Y1,X2,Y2,...)` | Returns the Y for the first true X. |
+| `coalesce(X,...)` | First non-null value in the list. |
+| `in(field,...)` | True if the field equals one of the listed values (use inside `if`). |
+
+## String & type helpers
+
+```spl
+... | eval user = lower(username)              ← normalize case
+... | eval short = substr(session_id, 1, 8)    ← first 8 chars (1-based)
+... | eval clean = replace(path, "/+", "/")    ← regex substitution
+... | eval n = tonumber(count_str)             ← string → number
+... | eval dur = tostring(seconds, "duration") ← seconds → HH:MM:SS
+... | eval when = strftime(_time, "%Y-%m-%d %H:%M")
+```
+
+See the full table in the [SPL cheatsheet](/splunk/notes/search-cheatsheet#common-eval-functions).
+
+## eval in other commands
+
+The same expression engine powers more than just `eval`:
+
+- [`where`](/splunk/filters/where-command) filters rows using an eval
+  expression — `... | where len(user) > 20`.
+- `stats`/`chart` can wrap an eval: `stats count(eval(status>=500)) as errors`.
+
+:::tip One eval, many fields
+You can chain multiple assignments by piping more `eval`s, but you can
+also build a derived field from a field you set earlier in the *same*
+pipeline — order matters, each command sees the columns produced before
+it.
+:::
+
+Next: [lookup](/splunk/transform/lookups) — pull in context that isn't in
+the event at all.

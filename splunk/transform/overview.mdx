@@ -1,0 +1,64 @@
+---
+slug: /transform
+sidebar_position: 1
+title: Transform
+description: Stage two of a Splunk search — extract fields, compute values, and enrich data once it has been filtered down.
+---
+
+# Transform
+
+Transforming is **stage two** of [building a search](/splunk/notes/structured-query).
+Once the [filter stage](/splunk/filters) has cut the data down to the
+events you care about, this is where you reshape it: pull new fields out
+of the raw text, compute derived values, enrich from external sources,
+and tidy up the field set.
+
+:::tip Transform on a small dataset, not a big one
+Every transforming command runs once per surviving row. That's exactly
+why filtering comes first — `eval`-ing or `rex`-ing 10,000 events is
+cheap; doing it to 10 million is not. Filter hard, *then* transform.
+:::
+
+## The mental model
+
+Think of the result set as a table. Where filtering **removes rows**,
+transforming **adds and changes columns** — it widens or rewrites the
+table without (usually) changing how many rows it has.
+
+```spl
+index=web sourcetype=access_combined earliest=-1h   ← filtered table
+| rex field=_raw "user=(?<username>\w+)"            ← + new column: username
+| eval is_error = if(status>=500,"yes","no")        ← + new column: is_error
+| lookup usertogroup user OUTPUT group              ← + new column: group
+| fields + username, status, is_error, group        ← keep just these columns
+```
+
+## The transforming commands
+
+### [rex — extract fields with regex →](/splunk/transform/rex)
+Pull structured fields out of unstructured raw text using named regex
+capture groups. The workhorse for "this value is buried in `_raw` and I
+need it as a field."
+
+### [eval — calculate & derive fields →](/splunk/transform/eval)
+Compute new fields from existing ones — arithmetic, string manipulation,
+conditional logic (`if`, `case`, `coalesce`), and type conversion. The
+most-used transforming command by far.
+
+### [lookup — enrich from external sources →](/splunk/transform/lookups)
+Join your events against an external table (CSV or KV store) to add
+context — turn a `user` into a `group`, an IP into a hostname, a code
+into a description.
+
+### [fields & rename — shape the field set →](/splunk/transform/fields-and-rename)
+Keep only the columns you need (`fields +`), drop the noise (`fields -`),
+and give fields readable names (`rename`).
+
+## Where this sits in the pipeline
+
+Transforming happens **after** filtering and **before** reporting — you
+shape and enrich the rows, then hand a clean, field-rich table to the
+[report stage](/splunk/report)
+for aggregation.
+
+Next: start with [rex](/splunk/transform/rex).

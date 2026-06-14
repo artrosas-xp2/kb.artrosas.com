@@ -1,0 +1,55 @@
+---
+sidebar_position: 4
+title: top & rare
+description: One-command shortcuts for the most and least common values of a field.
+---
+
+# `top` & `rare`
+
+These are quick-distribution shortcuts. `top` displays the **most**
+common values of a field; `rare` displays the **least** common. Both add
+a count and percentage for you — no `stats` + `sort` needed.
+
+```spl
+... | top limit=20 url        ← the 20 most common URLs
+... | rare url                ← the least common URLs
+```
+
+## What you get back
+
+`top` returns the values plus two computed columns:
+
+| url | count | percent |
+|-----|-------|---------|
+| /home | 4821 | 38.2 |
+| /login | 2104 | 16.7 |
+| … | … | … |
+
+It's effectively this, in one command:
+
+```spl
+... | stats count by url | sort -count | head 20
+```
+
+## Useful options
+
+```spl
+... | top limit=10 status                 ← cap to 10 rows
+... | top url by host                      ← top URLs within each host
+... | top status countfield=hits          ← rename the count column
+... | rare limit=5 user_agent              ← 5 least-common user agents
+```
+
+- `limit=N` — how many values to return (top defaults to 10).
+- `by <field>` — compute the top/rare values **within** each group.
+
+## When to use which
+
+- **`top`** — "what's dominating?" Most common errors, busiest URLs,
+  noisiest hosts.
+- **`rare`** — "what's unusual?" Rare user agents, one-off status codes,
+  the long tail. Handy as a cheap anomaly sniff-test before reaching for
+  [`anomalydetection`](/splunk/report/advanced).
+
+Next: [transaction](/splunk/report/transaction) — group related events
+into one.

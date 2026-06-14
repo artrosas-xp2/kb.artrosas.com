@@ -1,0 +1,73 @@
+---
+sidebar_position: 3
+title: Time modifiers
+description: earliest and latest — the relative-time syntax and snap-to units that make time the most powerful filter in Splunk.
+---
+
+# Time modifiers
+
+Time is the single most powerful filter in Splunk. Narrowing the window
+usually discards more data than any other filter, so set it tight and
+set it early. You can pick a range from the time picker in the UI, or
+inline in the search with `earliest` and `latest`.
+
+```spl
+index=web error earliest=-1h
+index=web error earliest=-1d@d latest=-h@h
+```
+
+## Relative time syntax
+
+```
+[+|-]<integer><unit>@<snap_time_unit>
+```
+
+- **sign** — `-` for the past (almost always), `+` for the future.
+- **integer + unit** — how much time: `60m`, `24h`, `7d`, `1mon`.
+- **`@snap`** — *optional* "snap to" that rounds **down** to a boundary.
+
+Common units: `s` seconds, `m` minutes, `h` hours, `d` days, `w` weeks,
+`mon` months, `y` years.
+
+## Snapping rounds down
+
+The `@` snap rounds the time **down** to the start of that unit:
+
+> If it's `11:59:00` and you snap to hours (`@h`), the time used is
+> `11:00:00`, not `12:00:00`.
+
+You can snap to specific days of the week with `@w0` (Sunday), `@w1`
+(Monday), and so on.
+
+## Worked example
+
+```spl
+error earliest=-1d@d latest=-h@h
+```
+
+Reads as: events containing `error` that occurred **yesterday, from the
+start of the day (00:00:00)**, through to **the most recent whole hour of
+today**.
+
+| Modifier | Means |
+|----------|-------|
+| `earliest=-1d@d` | go back one day, then snap to the start of that day |
+| `latest=-h@h` | go back to the most recent top-of-the-hour |
+
+## Practical patterns
+
+```spl
+earliest=-15m                  ← last 15 minutes
+earliest=-24h                  ← last 24 rolling hours
+earliest=-7d@d latest=@d       ← the last 7 full days (excludes today)
+earliest=-1mon@mon latest=@mon ← all of last calendar month
+```
+
+:::tip Tighten the window first
+Splunk's guidance is blunt: *limit the time range to only what is
+needed.* Use `-1h` not `-1w`. When a search is slow, shrinking the time
+window is usually the fastest win.
+:::
+
+Next: [keywords & booleans](/splunk/filters/keywords-and-booleans) — how
+the `search` command matches terms.

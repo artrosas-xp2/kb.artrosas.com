@@ -1,0 +1,62 @@
+---
+sidebar_position: 2
+title: sort — order the rows
+description: Order the result set by one or more fields, ascending or descending, with an optional row cap.
+---
+
+# `sort` — order the rows
+
+`sort` orders the search results by the fields you specify. By default it
+sorts **ascending**; prefix a field with `-` to sort it **descending**.
+
+```spl
+... | sort ip, -url
+```
+
+That sorts by `ip` ascending, and within each `ip`, by `url` descending.
+List as many fields as you like — they're applied left to right.
+
+## Ascending vs. descending
+
+```spl
+... | sort count          ← smallest count first (ascending, the default)
+... | sort -count         ← largest count first (descending)
+... | sort -count, host   ← by count desc, ties broken by host asc
+```
+
+The most common pattern in reporting is `sort -count` to put the biggest
+groups on top.
+
+## Capping the rows
+
+`sort` can limit how many rows it keeps, which is the idiomatic "top N"
+when you want them sorted:
+
+```spl
+... | sort 20 -count             ← top 20 by count
+... | sort limit=20 -count       ← same thing, explicit form
+```
+
+`sort 0` removes the default 10,000-row cap and returns everything (use
+with care on large sets).
+
+## Numeric vs. lexicographic
+
+`sort` auto-detects field types, but mixed or string-y fields can sort
+lexicographically (where `"100"` comes before `"9"`). Force the
+interpretation when it matters:
+
+```spl
+... | sort num(port)      ← treat as numbers: 9 before 100
+... | sort str(version)   ← treat as strings
+```
+
+:::tip sort is also a "top N" tool
+Several reporting shortcuts are just `sort` underneath —
+[`top`](/splunk/report/top-rare) is essentially
+`stats count by X | sort -count | head N`. When `top`/`rare` don't fit,
+`stats … | sort …` gives you full control.
+:::
+
+Next: [head, tail & reverse](/splunk/format/head-tail) — trim and flip the
+ordered set.

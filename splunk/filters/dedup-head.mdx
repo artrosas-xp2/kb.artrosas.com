@@ -1,0 +1,69 @@
+---
+sidebar_position: 6
+title: dedup, head & fields
+description: Trimming the result set further down the pipeline — drop duplicate rows, cap the row count, and remove columns.
+---
+
+# `dedup`, `head` & `fields`
+
+Once data is off disk, these commands trim the result set further down
+the pipeline — removing duplicate rows, capping how many rows you keep,
+and dropping columns you don't need. They're filters too, just operating
+on the in-flight table rather than the index.
+
+## dedup — remove duplicate rows
+
+`dedup` removes results that repeat a value (or combination of values)
+you specify, keeping the first occurrence:
+
+```spl
+... | dedup clientip                ← one row per client IP
+... | dedup host, sourcetype        ← one row per host+sourcetype pair
+```
+
+By default it keeps the first event per group in search order. Useful for
+"show me the distinct X" without a full `stats`.
+
+## head / tail — cap the row count
+
+`head N` returns the first N results; `tail N` returns the last N (in
+reverse order):
+
+```spl
+... | head 20                       ← first 20 rows
+... | tail 20                       ← last 20 rows
+```
+
+`head` is also a cheap way to sanity-check a search on a small sample
+before running it over everything.
+
+## fields — remove columns
+
+`fields` trims columns. `+` keeps only the named fields; `-` removes
+them:
+
+```spl
+... | fields + host, ip             ← keep only host and ip, in that order
+... | fields - _raw, punct          ← drop noisy columns
+```
+
+:::tip Drop fields early for speed
+Removing large unused fields (like `_raw`) early in the pipeline reduces
+the data each later command has to carry. It's a filtering optimization,
+not just cosmetics.
+:::
+
+## Where these sit in the pipeline
+
+These come **after** your base filters and time range have already done
+the heavy lifting:
+
+```spl
+index=web sourcetype=access_combined earliest=-1h   ← stage 1: filter off disk
+| dedup clientip                                    ← trim duplicate rows
+| fields + clientip, uri_path, status               ← keep only what you need
+| head 100                                          ← cap the sample
+```
+
+That's the end of the **filter stage**. From here you move on to
+[transforming the data](/splunk/transform).

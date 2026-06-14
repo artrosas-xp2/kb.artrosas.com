@@ -1,0 +1,70 @@
+---
+sidebar_position: 4
+title: Reports & alerts
+description: Saved searches that power dashboard panels and fire actions when conditions are met.
+---
+
+# Reports & alerts
+
+Dashboards lean heavily on two knowledge objects built from searches:
+**reports** (saved searches you reuse) and **alerts** (saved searches that
+*act* when results meet a condition). Both start as ordinary SPL.
+
+## Reports — saved searches
+
+A report is simply a **saved search**. Once saved, you can:
+
+- run it ad hoc,
+- schedule it to run on a regular interval, and
+- add it to a dashboard as a panel.
+
+That last point is why reports matter here: a panel backed by a
+**scheduled report** displays the last completed result instead of
+re-running a fresh search on every load — the foundation of a
+[fast dashboard](/splunk/dashboards/performance).
+
+```
+Search  →  Save As ▸ Report  →  (schedule it)  →  add to dashboard panel
+```
+
+## Alerts — searches that act
+
+An alert is a search that **triggers when its results meet specific
+conditions**. Alerts work on both historical and real-time searches, and
+when they fire they can run **alert actions**, such as:
+
+- sending the alert information to designated email addresses, or
+- posting the alert information to a web resource (webhook).
+
+```
+Search  →  Save As ▸ Alert  →  set trigger condition  →  set action(s)
+```
+
+A typical trigger is "number of results is greater than N" over a rolling
+window — for example, alert when server errors spike:
+
+```spl
+index=web status>=500 | stats count
+```
+
+…saved as an alert that fires when `count` exceeds a threshold.
+
+## Report vs. alert vs. dashboard panel
+
+| Object | Purpose |
+|--------|---------|
+| **Report** | A reusable saved search; can feed a panel. |
+| **Alert** | A saved search that fires actions on a condition. |
+| **Panel** | A dashboard tile that *displays* a search or report. |
+
+All three are the same thing underneath — a search — pointed at a
+different outcome: reuse, notification, or display.
+
+:::tip Build the search first
+Reports and alerts are only as good as the SPL behind them. Get the
+[search pipeline](/splunk/notes/structured-query) right — filter,
+transform, report — then save it as whichever object you need.
+:::
+
+Next: [performance](/splunk/dashboards/performance) — keep the panels
+those searches feed fast.

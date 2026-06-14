@@ -1,0 +1,71 @@
+---
+sidebar_position: 5
+title: The where command
+description: Filtering on computed values and field-to-field comparisons that the base search command can't express.
+---
+
+# The `where` command
+
+`where` filters search results using **eval expressions**. Reach for it
+when the base [`search`](/splunk/filters/keywords-and-booleans) can't
+express what you need — specifically, comparing **two fields** to each
+other, or filtering on a **computed** value.
+
+```spl
+... | where bytes_out > bytes_in
+... | where status >= 400 AND host="web-prod-01"
+```
+
+## search vs. where
+
+They look similar but do different jobs:
+
+| | `search` | `where` |
+|---|----------|---------|
+| Position | Front of the pipe (implied) | After a `\|`, anywhere |
+| Compares | field to a literal value | field to a **field**, or to an **expression** |
+| Uses the index | Yes — reads off disk | No — runs on results already retrieved |
+| Eval functions | No | Yes (full eval expression support) |
+
+Rule of thumb: filter with `search` as early as possible to limit data
+off disk, then use `where` for the comparisons `search` can't do.
+
+## Field-to-field comparison
+
+This is the classic `where` use case — `search` can only compare a field
+to a literal, so this *has* to be `where`:
+
+```spl
+index=web | where bytes > avg_bytes
+index=net | where src_port = dest_port
+```
+
+## Filtering on computed values
+
+Combine `where` with [eval functions](/splunk/notes/search-cheatsheet)
+to filter on something you calculate:
+
+```spl
+... | where len(username) > 20
+... | where like(uri_path, "/admin%")
+... | where cidrmatch("10.0.0.0/8", clientip)
+... | eval ratio = errors / total | where ratio > 0.05
+```
+
+## isnull / isnotnull
+
+A common pattern — keep only rows where a field is (or isn't) present:
+
+```spl
+... | where isnotnull(user)
+... | where isnull(error_code)
+```
+
+:::note where is case-sensitive
+Unlike the base `search`, string comparisons in `where` are
+case-sensitive. `where status="OK"` will not match `ok`. Normalize with
+`lower()` if you need a case-insensitive match: `where lower(status)="ok"`.
+:::
+
+Next: [`dedup`, `head`, and `fields`](/splunk/filters/dedup-head) for
+trimming the result set.
