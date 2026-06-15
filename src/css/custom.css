@@ -327,3 +327,72 @@ code {
 .sidebar-stage-format     { --stage-color: var(--stage-format); }
 .sidebar-stage-dashboards { --stage-color: var(--stage-dashboards); }
 .sidebar-stage-reference  { --stage-color: var(--stage-reference); }
+
+/* ---------------------------------------------------------------------------
+ * Per-KB sidebar background colors
+ * Each docs instance renders with a `plugin-id-<id>` class on <html>, so we
+ * tint each sidebar independently:
+ *   - Hardware Keys (plugin-id-default) -> azure blue
+ *   - Splunk        (plugin-id-splunk)  -> warm orange/red
+ * Link/hover/active colors are driven through Infima's --ifm-menu-* tokens so
+ * every interactive state stays legible against the tinted background.
+ * ------------------------------------------------------------------------- */
+
+/* ---- Hardware Keys: azure blue (distinct from the indigo brand primary) ---- */
+.plugin-id-default .theme-doc-sidebar-container {
+  background: #eef3fb;
+  border-right: 1px solid #d6e2f3;
+}
+.plugin-id-default .menu {
+  --ifm-menu-color: #3a4a63;                       /* slate, legible on the tint */
+  --ifm-menu-color-active: #1d4ed8;                /* blue-700 */
+  --ifm-menu-color-background-active: #d8e6fb;
+  --ifm-menu-color-background-hover: #e3ecf8;
+}
+
+[data-theme='dark'].plugin-id-default .theme-doc-sidebar-container {
+  background: #101a27;
+  border-right: 1px solid #1f2c3e;
+}
+[data-theme='dark'].plugin-id-default .menu {
+  --ifm-menu-color: #b3c0d4;
+  --ifm-menu-color-active: #93c5fd;
+  --ifm-menu-color-background-active: rgba(96, 165, 250, 0.18);
+  --ifm-menu-color-background-hover: rgba(96, 165, 250, 0.10);
+}
+
+/* ---- Splunk: brand green (~Splunk green #65a637) ---- */
+.plugin-id-splunk .theme-doc-sidebar-container {
+  background: #eef6e7;
+  border-right: 1px solid #d4e7c4;
+}
+.plugin-id-splunk .menu {
+  --ifm-menu-color: #3c4a30;                       /* dark olive, legible on the tint */
+  --ifm-menu-color-active: #4a7d29;                /* deep Splunk green */
+  --ifm-menu-color-background-active: #dcebcb;
+  --ifm-menu-color-background-hover: #e6f1d9;
+}
+/* Darken the section accents that blend into the green tint (emerald
+ * `report`, teal `dashboards`, slate `reference`); the rest read fine. */
+.plugin-id-splunk {
+  --stage-report: #047857;
+  --stage-dashboards: #0f766e;
+  --stage-reference: #64748b;
+}
+
+[data-theme='dark'].plugin-id-splunk .theme-doc-sidebar-container {
+  background: #131c10;
+  border-right: 1px solid #233019;
+}
+[data-theme='dark'].plugin-id-splunk .menu {
+  --ifm-menu-color: #c3d4b3;
+  --ifm-menu-color-active: #9fd27a;
+  --ifm-menu-color-background-active: rgba(101, 166, 55, 0.20);
+  --ifm-menu-color-background-hover: rgba(101, 166, 55, 0.12);
+}
+/* On the dark green tint the original brighter stage accents read well again. */
+[data-theme='dark'].plugin-id-splunk {
+  --stage-report: #34d399;
+  --stage-dashboards: #2dd4bf;
+  --stage-reference: #94a3b8;
+}
