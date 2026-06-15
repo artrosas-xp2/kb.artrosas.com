@@ -1,0 +1,115 @@
+---
+title: Chrome Security Key Manager
+sidebar_position: 2
+description: Set a PIN, manage passkeys and fingerprints, and reset a FIDO2 key — all from Google Chrome's built-in tool
+---
+
+# Setting Up a Security Key in Google Chrome
+
+Google Chrome ships with a built-in FIDO2 management tool — no vendor
+software required. Use it to set or change the key's PIN, inspect and
+delete the passkeys stored on the key, enroll fingerprints on biometric
+models, and factory-reset the key.
+
+This is the fastest way to get a brand-new key ready, or to confirm what a
+user's key actually has on it during a help-desk session, when you don't
+want to install the vendor CLI.
+
+Use this when:
+* You're provisioning a new FIDO2 key and need to set its initial PIN.
+* A user forgot their PIN and the key needs a factory reset before re-enrollment.
+* You want to see which passkeys (resident credentials) are taking up slots on a key.
+* You're enrolling fingerprints on a key with a biometric sensor.
+
+:::note Scope
+These tools manage the **FIDO2 / CTAP2** side of the token only. The PIN
+set here is the *FIDO2 PIN* — not the PIV PIN, the OATH PIN, or the admin
+key. If you're not sure why a single key has several different "PINs," see
+[applet-architecture](../reference/applet-architecture).
+:::
+
+## Opening the tool
+
+1. Plug the security key into a USB port. (Reset and enrollment are most
+   reliable over USB — NFC is fine for everyday sign-in but flaky for
+   management operations.)
+2. Open Chrome and go to:
+   ```text
+   chrome://settings/securityKeys
+   ```
+   :::tip Why the direct URL
+   The menu path moves between Chrome versions (currently **Settings →
+   Privacy and security → Security → Manage security keys**). Pasting the
+   `chrome://` URL straight into the address bar skips the hunt and lands
+   on the same page every time.
+   :::
+3. You'll see a short menu of operations. Each one prompts you to touch the
+   key and enter its PIN before it does anything.
+
+## What each option does
+
+| Option | What it does | Needs PIN? |
+|---|---|---|
+| **Create a PIN** | Sets the FIDO2 PIN on a key that has none, or changes an existing one. | Only to *change* an existing PIN |
+| **Sign-in data** | Lists the passkeys (resident credentials) stored on the key, by site and username. Lets you delete individual ones. | Yes |
+| **Fingerprints** | Enrolls, names, and removes fingerprints on keys with a biometric sensor. | Yes |
+| **Reset your Security Key** | Wipes the key back to factory state — every passkey **and** the PIN. | No (intentionally) |
+
+## Setting the PIN on a new key
+
+1. On `chrome://settings/securityKeys`, choose **Create a PIN**.
+2. Touch the key when it blinks.
+3. Enter a PIN (4–63 characters, depending on the key) and confirm it.
+4. You'll get a "PIN set" confirmation.
+
+:::caution PIN lockout is real
+The FIDO2 PIN has a hard retry counter — typically **8 consecutive wrong
+attempts** before the key locks. Unlike the OATH side, there's no
+soft-reset that preserves data: a locked FIDO2 applet can only be cleared
+by a full **reset**, which destroys every passkey on the key. Set a PIN
+the user can actually remember, and don't "test" a forgotten PIN by
+guessing.
+:::
+
+## Resetting a key
+
+A reset returns the FIDO2 applet to factory state. Use it when a PIN is
+forgotten or locked, or when you're recycling a key between users.
+
+1. Choose **Reset your Security Key**.
+2. **Re-insert the key when prompted.** Chrome only accepts a reset within
+   a short window (≈10 seconds) of the key being plugged in — a deliberate
+   anti-tamper measure so a reset can't be triggered on a key that's been
+   sitting in the port. If the window passes, unplug and re-plug.
+3. Touch the key to confirm.
+
+:::danger A reset is irreversible
+Every passkey on the key is deleted and the FIDO2 PIN is cleared. Any
+account that relied on a passkey stored *on this key* will need that
+passkey re-registered. Confirm the user has another factor enrolled before
+you reset.
+:::
+
+After a reset, set a fresh PIN (above) before handing the key back or
+re-registering passkeys.
+
+## Troubleshooting
+
+**"This security key can't be reset because it has been inserted for too
+long."** — The 10-second window expired. Unplug the key, plug it back in,
+and click reset again immediately.
+
+**Options are greyed out / nothing happens on touch** — Some operations
+need a current Chrome and a key on recent firmware. Try `chrome://settings/help`
+to update Chrome, and confirm the key is seated in a USB port directly
+(not through an unpowered hub).
+
+**"Fingerprints" is missing** — That option only appears for keys with a
+biometric sensor. PIN-only keys won't show it.
+
+**Set a PIN here but the user is still prompted to "create a PIN" at a
+site** — Some relying parties require a *resident* (discoverable)
+credential and will walk the user through PIN creation themselves; if a PIN
+already exists they'll ask for it instead. A locked or mismatched PIN looks
+the same from the site's side — if in doubt, verify the PIN state on
+`chrome://settings/securityKeys` first.

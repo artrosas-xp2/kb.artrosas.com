@@ -13,6 +13,7 @@ const sidebars = {
         'runbooks/case-study-lockout-that-wasnt',
         'runbooks/hotp-counter-drift',
         'runbooks/re-seeding-process',
+        'runbooks/chrome-security-keys',
       ],
     },
     {
